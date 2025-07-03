@@ -30,6 +30,9 @@
     <ClCompile Include="BusinessLogic.cpp">
       <Filter>BusinessLogicLayer</Filter>
     </ClCompile>
+    <ClCompile Include="DataAccess.cpp">
+      <Filter>DataAccessLayer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MyForm.h">
