@@ -3,6 +3,7 @@
 #include <Windows.h>
 #pragma comment(lib, "Gdi32.lib")
 #include <msclr/marshal_cppstd.h>
+#include <vector>
 
 class NavigationTree;
 struct AnalysisResult;
@@ -29,10 +30,10 @@ namespace NexusCrawlerApp {
 
 	private:
 		NavigationTree* crawler;
-		System::ComponentModel::BackgroundWorker^ backgroundCrawler;
+		BackgroundWorker^ crawlWorker;
+		BackgroundWorker^ linkCheckWorker;
 		System::ComponentModel::Container^ components;
 
-		// --- Componentes de UI ---
 		Panel^ panelInicio;
 		Panel^ panelCarga;
 		Panel^ panelResultados;
@@ -48,6 +49,8 @@ namespace NexusCrawlerApp {
 		Label^ lblBotonAnalisis;
 		Label^ lblCargando;
 		ProgressBar^ progressBar;
+
+		GroupBox^ grpResumen;
 		Label^ lblResumenTitulo;
 		Label^ lblUrlAnalizada;
 		Label^ lblProfundidadSolicitada;
@@ -55,21 +58,24 @@ namespace NexusCrawlerApp {
 		Label^ lblEnlacesInternos;
 		Label^ lblEnlacesExternos;
 		Label^ lblProfundidadReal;
-		GroupBox^ grpResumen;
-		GroupBox^ grpAcciones;
-		GroupBox^ grpAccionResultado;
-		Label^ lblAccionResultadoTitulo;
-		TextBox^ txtAccionResultado;
-		Panel^ panelArbolGrafico;
 
-		// --- NUEVOS CONTROLES PARA BOTONES CON ESTILO ---
+		GroupBox^ grpAcciones;
 		Panel^ panelBtnDetectarRotos;
 		Label^ lblBtnDetectarRotos;
 		Panel^ panelBtnBuscarPalabra;
 		Label^ lblBtnBuscarPalabra;
 		Panel^ panelBtnExportar;
 		Label^ lblBtnExportar;
+		Panel^ panelBtnVisualizar;
+		Label^ lblBtnVisualizar;
+
+		GroupBox^ grpAccionResultado;
 		TextBox^ txtPalabraClave;
+		Label^ lblAccionResultadoTitulo;
+		RichTextBox^ rtbAccionResultado;
+
+		Panel^ panelArbolGrafico;
+		Button^ btnVolverResumen;
 
 #pragma region Windows Form Designer generated code
 		void InitializeComponent(void);
@@ -78,15 +84,18 @@ namespace NexusCrawlerApp {
 	private:
 		void SwitchPanel(Panel^ panelToShow);
 		System::Void btnIniciarAnalisis_Click(System::Object^ sender, System::EventArgs^ e);
-		System::Void backgroundCrawler_DoWork(System::Object^ sender, System::ComponentModel::DoWorkEventArgs^ e);
-		System::Void backgroundCrawler_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e);
 		System::Void panelBotonAnalisis_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e);
 		System::Void panelArbolGrafico_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e);
-		
-		// Handlers para los nuevos botones
 		System::Void btnExportar_Click(System::Object^ sender, System::EventArgs^ e);
 		System::Void btnDetectarRotos_Click(System::Object^ sender, System::EventArgs^ e);
 		System::Void btnBuscarPalabra_Click(System::Object^ sender, System::EventArgs^ e);
 		System::Void panelAccion_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e);
+		System::Void btnVisualizarArbol_Click(System::Object^ sender, System::EventArgs^ e);
+		System::Void btnVolverResumen_Click(System::Object^ sender, System::EventArgs^ e);
+
+		System::Void crawlWorker_DoWork(System::Object^ sender, System::ComponentModel::DoWorkEventArgs^ e);
+		System::Void crawlWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e);
+		System::Void linkCheckWorker_DoWork(System::Object^ sender, System::ComponentModel::DoWorkEventArgs^ e);
+		System::Void linkCheckWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e);
 	};
 }

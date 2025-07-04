@@ -46,11 +46,14 @@ private:
     std::string scheme;
 
     void crawl(WebNode* currentNode, int maxDepth);
-    std::string downloadHtml(const std::string& url);
+    std::string downloadHtml(const std::string& url, long* http_code);
     void extractLinks(WebNode* node);
     std::string getBaseDomain(const std::string& url);
     void search_for_links(GumboNode* node, WebNode* parentNode);
     void countNodesRecursive(WebNode* node, AnalysisResult& result);
+
+    // Función auxiliar para la nueva lógica optimizada
+    void collectNodesToCheck(WebNode* node, std::vector<WebNode*>& nodesToCheck);
 
 public:
     NavigationTree();
@@ -59,4 +62,7 @@ public:
     void startCrawling(const std::string& startUrl, int maxDepth);
     WebNode* getRoot();
     AnalysisResult getAnalysisResult();
+
+    // Nueva función optimizada para detectar enlaces rotos
+    std::vector<std::string> checkAllLinksStatus();
 };
