@@ -118,26 +118,17 @@ System::Void MyForm::linkCheckWorker_RunWorkerCompleted(System::Object^ sender, 
 	this->lblAccionResultadoTitulo->Text = "Resultados de 'Enlaces Rotos':";
 	this->rtbAccionResultado->Text = "";
 	if (brokenLinks->Count == 0) {
-		this->rtbAccionResultado->ForeColor = Color::LightGreen;
-		this->rtbAccionResultado->SelectionFont = gcnew System::Drawing::Font("Segoe UI Emoji", 10);
-		this->rtbAccionResultado->AppendText("✅ ");
-		this->rtbAccionResultado->SelectionFont = gcnew System::Drawing::Font(this->rtbAccionResultado->Font->FontFamily, 10.2f);
+		this->rtbAccionResultado->SelectionColor = Color::LightGreen;
+		this->rtbAccionResultado->AppendText("[OK] ");
+		this->rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
 		this->rtbAccionResultado->AppendText("¡Felicidades! No se encontraron enlaces rotos.");
 	}
 	else {
-		this->rtbAccionResultado->ForeColor = Color::Gainsboro;
 		this->rtbAccionResultado->AppendText("Se encontraron " + brokenLinks->Count + " enlaces rotos:\r\n\r\n");
-
-		System::Drawing::Font^ emojiFont = gcnew System::Drawing::Font("Segoe UI Emoji", 10);
-		System::Drawing::Font^ regularFont = gcnew System::Drawing::Font("Consolas", 10.2F);
-
 		for each (String ^ link in brokenLinks) {
-			rtbAccionResultado->SelectionFont = emojiFont;
 			rtbAccionResultado->SelectionColor = Color::Tomato;
-			rtbAccionResultado->AppendText("❌ ");
-
-			rtbAccionResultado->SelectionFont = regularFont;
-			rtbAccionResultado->SelectionColor = Color::Gainsboro;
+			rtbAccionResultado->AppendText("[ROTO] ");
+			rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
 			rtbAccionResultado->AppendText(link + "\r\n");
 		}
 	}
@@ -147,7 +138,6 @@ System::Void MyForm::btnVisualizarArbol_Click(System::Object^ sender, System::Ev
 	this->grpResumen->Visible = false;
 	this->grpAcciones->Visible = false;
 	this->grpAccionResultado->Visible = false;
-
 	this->panelArbolGrafico->Visible = true;
 	this->btnVolverResumen->Visible = true;
 	this->panelArbolGrafico->BringToFront();
@@ -159,7 +149,6 @@ System::Void MyForm::btnVolverResumen_Click(System::Object^ sender, System::Even
 	this->grpResumen->Visible = true;
 	this->grpAcciones->Visible = true;
 	this->grpAccionResultado->Visible = true;
-
 	this->panelArbolGrafico->Visible = false;
 	this->btnVolverResumen->Visible = false;
 }
@@ -432,10 +421,10 @@ void MyForm::InitializeComponent(void)
 	// panelResultados
 	// 
 	this->panelResultados->Controls->Add(this->btnVolverResumen);
-	this->panelResultados->Controls->Add(this->panelArbolGrafico);
 	this->panelResultados->Controls->Add(this->grpAccionResultado);
 	this->panelResultados->Controls->Add(this->grpAcciones);
 	this->panelResultados->Controls->Add(this->grpResumen);
+	this->panelResultados->Controls->Add(this->panelArbolGrafico);
 	this->panelResultados->Dock = System::Windows::Forms::DockStyle::Fill;
 	this->panelResultados->Location = System::Drawing::Point(0, 0);
 	this->panelResultados->Name = L"panelResultados";
@@ -454,7 +443,7 @@ void MyForm::InitializeComponent(void)
 	this->grpResumen->ForeColor = System::Drawing::Color::White;
 	this->grpResumen->Location = System::Drawing::Point(20, 20);
 	this->grpResumen->Name = L"grpResumen";
-	this->grpResumen->Size = System::Drawing::Size(420, 240);
+	this->grpResumen->Size = System::Drawing::Size(420, 260);
 	this->grpResumen->TabIndex = 0;
 	this->grpResumen->TabStop = false;
 	this->grpResumen->Text = L"Resumen del Análisis";
@@ -676,6 +665,8 @@ void MyForm::InitializeComponent(void)
 	// 
 	// rtbAccionResultado
 	// 
+	this->rtbAccionResultado->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom)
+		| System::Windows::Forms::AnchorStyles::Left));
 	this->rtbAccionResultado->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(42)), static_cast<System::Int32>(static_cast<System::Byte>(41)), static_cast<System::Int32>(static_cast<System::Byte>(64)));
 	this->rtbAccionResultado->BorderStyle = System::Windows::Forms::BorderStyle::None;
 	this->rtbAccionResultado->Font = (gcnew System::Drawing::Font(L"Consolas", 10.2F));
@@ -693,17 +684,20 @@ void MyForm::InitializeComponent(void)
 		| System::Windows::Forms::AnchorStyles::Left)
 		| System::Windows::Forms::AnchorStyles::Right));
 	this->panelArbolGrafico->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(42)), static_cast<System::Int32>(static_cast<System::Byte>(41)), static_cast<System::Int32>(static_cast<System::Byte>(64)));
-	this->panelArbolGrafico->Location = System::Drawing::Point(20, 270);
+	this->panelArbolGrafico->BorderStyle = System::Windows::Forms::BorderStyle::FixedSingle;
+	this->panelArbolGrafico->Location = System::Drawing::Point(20, 290);
 	this->panelArbolGrafico->Name = L"panelArbolGrafico";
-	this->panelArbolGrafico->Size = System::Drawing::Size(860, 400);
+	this->panelArbolGrafico->Size = System::Drawing::Size(860, 380);
 	this->panelArbolGrafico->TabIndex = 2;
 	this->panelArbolGrafico->Visible = false;
 	this->panelArbolGrafico->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &MyForm::panelArbolGrafico_Paint);
 	// 
 	// btnVolverResumen
 	// 
+	this->btnVolverResumen->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left));
+	this->btnVolverResumen->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9, System::Drawing::FontStyle::Bold));
 	this->btnVolverResumen->ForeColor = System::Drawing::Color::Black;
-	this->btnVolverResumen->Location = System::Drawing::Point(20, 630);
+	this->btnVolverResumen->Location = System::Drawing::Point(20, 640);
 	this->btnVolverResumen->Name = L"btnVolverResumen";
 	this->btnVolverResumen->Size = System::Drawing::Size(180, 30);
 	this->btnVolverResumen->TabIndex = 5;
@@ -716,9 +710,9 @@ void MyForm::InitializeComponent(void)
 	this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::None;
 	this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(28)), static_cast<System::Int32>(static_cast<System::Byte>(27)), static_cast<System::Int32>(static_cast<System::Byte>(45)));
 	this->ClientSize = System::Drawing::Size(900, 700);
-	this->Controls->Add(this->panelResultados);
 	this->Controls->Add(this->panelCarga);
 	this->Controls->Add(this->panelInicio);
+	this->Controls->Add(this->panelResultados);
 	this->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9.75F));
 	this->ForeColor = System::Drawing::Color::White;
 	this->Name = L"MyForm";
@@ -734,21 +728,21 @@ void MyForm::InitializeComponent(void)
 	this->grpResumen->ResumeLayout(false);
 	this->grpResumen->PerformLayout();
 	this->grpAcciones->ResumeLayout(false);
+	this->panelBtnVisualizar->ResumeLayout(false);
 	this->panelBtnBuscarPalabra->ResumeLayout(false);
 	this->panelBtnDetectarRotos->ResumeLayout(false);
 	this->panelBtnExportar->ResumeLayout(false);
-	this->panelBtnVisualizar->ResumeLayout(false);
 	this->grpAccionResultado->ResumeLayout(false);
 	this->grpAccionResultado->PerformLayout();
 	this->ResumeLayout(false);
-	//
+	// 
 	// crawlWorker
-	//
+	// 
 	this->crawlWorker->DoWork += gcnew System::ComponentModel::DoWorkEventHandler(this, &MyForm::crawlWorker_DoWork);
 	this->crawlWorker->RunWorkerCompleted += gcnew System::ComponentModel::RunWorkerCompletedEventHandler(this, &MyForm::crawlWorker_RunWorkerCompleted);
-	//
+	// 
 	// linkCheckWorker
-	//
+	// 
 	this->linkCheckWorker->DoWork += gcnew System::ComponentModel::DoWorkEventHandler(this, &MyForm::linkCheckWorker_DoWork);
 	this->linkCheckWorker->RunWorkerCompleted += gcnew System::ComponentModel::RunWorkerCompletedEventHandler(this, &MyForm::linkCheckWorker_RunWorkerCompleted);
 }

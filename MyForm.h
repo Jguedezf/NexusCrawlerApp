@@ -49,7 +49,6 @@ namespace NexusCrawlerApp {
 		Label^ lblBotonAnalisis;
 		Label^ lblCargando;
 		ProgressBar^ progressBar;
-
 		GroupBox^ grpResumen;
 		Label^ lblResumenTitulo;
 		Label^ lblUrlAnalizada;
@@ -58,7 +57,6 @@ namespace NexusCrawlerApp {
 		Label^ lblEnlacesInternos;
 		Label^ lblEnlacesExternos;
 		Label^ lblProfundidadReal;
-
 		GroupBox^ grpAcciones;
 		Panel^ panelBtnDetectarRotos;
 		Label^ lblBtnDetectarRotos;
@@ -68,12 +66,10 @@ namespace NexusCrawlerApp {
 		Label^ lblBtnExportar;
 		Panel^ panelBtnVisualizar;
 		Label^ lblBtnVisualizar;
-
 		GroupBox^ grpAccionResultado;
 		TextBox^ txtPalabraClave;
 		Label^ lblAccionResultadoTitulo;
 		RichTextBox^ rtbAccionResultado;
-
 		Panel^ panelArbolGrafico;
 		Button^ btnVolverResumen;
 
