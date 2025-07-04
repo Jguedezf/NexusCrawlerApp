@@ -24,7 +24,6 @@ namespace NexusCrawlerApp {
 	{
 	public:
 		MyForm(void);
-
 	protected:
 		~MyForm();
 
@@ -33,8 +32,7 @@ namespace NexusCrawlerApp {
 		System::ComponentModel::BackgroundWorker^ backgroundCrawler;
 		System::ComponentModel::Container^ components;
 
-		// Componentes de UI
-		MenuStrip^ menuStrip; // <-- AÑADIDO
+		// --- Componentes de UI ---
 		Panel^ panelInicio;
 		Panel^ panelCarga;
 		Panel^ panelResultados;
@@ -57,25 +55,38 @@ namespace NexusCrawlerApp {
 		Label^ lblEnlacesInternos;
 		Label^ lblEnlacesExternos;
 		Label^ lblProfundidadReal;
-		Button^ btnVolver;
+		GroupBox^ grpResumen;
+		GroupBox^ grpAcciones;
+		GroupBox^ grpAccionResultado;
+		Label^ lblAccionResultadoTitulo;
+		TextBox^ txtAccionResultado;
+		Panel^ panelArbolGrafico;
+
+		// --- NUEVOS CONTROLES PARA BOTONES CON ESTILO ---
+		Panel^ panelBtnDetectarRotos;
+		Label^ lblBtnDetectarRotos;
+		Panel^ panelBtnBuscarPalabra;
+		Label^ lblBtnBuscarPalabra;
+		Panel^ panelBtnExportar;
+		Label^ lblBtnExportar;
+		TextBox^ txtPalabraClave;
 
 #pragma region Windows Form Designer generated code
 		void InitializeComponent(void);
 #pragma endregion
 
 	private:
-		// Manejadores de eventos y funciones
 		void SwitchPanel(Panel^ panelToShow);
 		System::Void btnIniciarAnalisis_Click(System::Object^ sender, System::EventArgs^ e);
 		System::Void backgroundCrawler_DoWork(System::Object^ sender, System::ComponentModel::DoWorkEventArgs^ e);
 		System::Void backgroundCrawler_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e);
-		System::Void btnVolver_Click(System::Object^ sender, System::EventArgs^ e);
 		System::Void panelBotonAnalisis_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e);
-
-		// --- NUEVOS MANEJADORES PARA EL MENÚ ---
-		System::Void nuevoAnalisisToolStripMenuItem_Click(System::Object^ sender, System::EventArgs^ e);
-		System::Void exportarArbolToolStripMenuItem_Click(System::Object^ sender, System::EventArgs^ e);
-		System::Void salirToolStripMenuItem_Click(System::Object^ sender, System::EventArgs^ e);
-		System::Void acercaDeToolStripMenuItem_Click(System::Object^ sender, System::EventArgs^ e);
+		System::Void panelArbolGrafico_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e);
+		
+		// Handlers para los nuevos botones
+		System::Void btnExportar_Click(System::Object^ sender, System::EventArgs^ e);
+		System::Void btnDetectarRotos_Click(System::Object^ sender, System::EventArgs^ e);
+		System::Void btnBuscarPalabra_Click(System::Object^ sender, System::EventArgs^ e);
+		System::Void panelAccion_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e);
 	};
 }
