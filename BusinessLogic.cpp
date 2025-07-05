@@ -5,12 +5,15 @@
 #include <algorithm>
 #include <vector>
 #include <list>
+#include <queue>
+#include <map>
 
 struct RequestData {
     WebNode* node;
     CURL* handle;
 };
 
+// --- Implementación de WebNode ---
 WebNode::WebNode(const std::string& url, LinkType type, int depth)
     : url(url), type(type), depth(depth), status(LinkStatus::NotChecked) {
 }
@@ -24,6 +27,7 @@ void WebNode::addChild(WebNode* child) {
     children.push_back(child);
 }
 
+// --- Implementación de NavigationTree ---
 NavigationTree::NavigationTree() : root(nullptr) {}
 NavigationTree::~NavigationTree() {
     if (root) {
@@ -52,9 +56,7 @@ std::string NavigationTree::downloadHtml(const std::string& url, long* http_code
         curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "NexusCrawler/1.0");
         curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0L);
         curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0L);
-
         CURLcode res = curl_easy_perform(curl_handle);
-
         if (http_code != nullptr) {
             curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, http_code);
         }
@@ -69,26 +71,30 @@ std::string NavigationTree::downloadHtml(const std::string& url, long* http_code
 
 void NavigationTree::search_for_links(GumboNode* node, WebNode* parentNode) {
     if (node->type != GUMBO_NODE_ELEMENT) return;
-
     if (node->v.element.tag == GUMBO_TAG_A) {
         GumboAttribute* href = gumbo_get_attribute(&node->v.element.attributes, "href");
         if (href && href->value && strlen(href->value) > 0) {
-            std::string link_url = href->value;
+            std::string link_url_raw = href->value;
+            if (link_url_raw.rfind("#", 0) == 0 || link_url_raw.rfind("javascript:", 0) == 0) {
+                return;
+            }
+            std::string link_url = link_url_raw;
             std::string parent_base_url = parentNode->url.substr(0, parentNode->url.find_last_of('/') + 1);
-
             if (link_url.rfind("//", 0) == 0) link_url = this->scheme + ":" + link_url;
             else if (link_url.rfind("/", 0) == 0) link_url = this->scheme + "://" + this->baseDomain + link_url;
             else if (link_url.rfind("http", 0) != 0) link_url = parent_base_url + link_url;
-
-            if (link_url.length() > 1 && link_url.find('#') == (link_url.length() - 1)) link_url.pop_back();
+            if (link_url.find('#') != std::string::npos) {
+                link_url = link_url.substr(0, link_url.find('#'));
+            }
             if (link_url.empty() || link_url.find("mailto:") == 0 || link_url.find("tel:") == 0) return;
-
+            if (link_url == parentNode->url) {
+                return;
+            }
             LinkType type = (link_url.find(this->baseDomain) != std::string::npos) ? LinkType::Internal : LinkType::External;
             WebNode* new_node = new WebNode(link_url, type, parentNode->depth + 1);
             parentNode->addChild(new_node);
         }
     }
-
     GumboVector* children = &node->v.element.children;
     for (unsigned int i = 0; i < children->length; ++i) {
         search_for_links(static_cast<GumboNode*>(children->data[i]), parentNode);
@@ -98,7 +104,7 @@ void NavigationTree::search_for_links(GumboNode* node, WebNode* parentNode) {
 void NavigationTree::extractLinks(WebNode* node) {
     long http_code = 0;
     std::string html = downloadHtml(node->url, &http_code);
-    if (http_code >= 400 || http_code < 0) {
+    if (http_code >= 400 || http_code < 0 || html.empty()) {
         node->status = LinkStatus::Broken;
         return;
     }
@@ -137,6 +143,8 @@ void NavigationTree::startCrawling(const std::string& startUrl, int maxDepth) {
         root = nullptr;
     }
     visitedUrls.clear();
+    positionsCalculated = false;
+    drawableTreeCache.clear();
     size_t scheme_end = startUrl.find("://");
     this->scheme = (scheme_end != std::string::npos) ? startUrl.substr(0, scheme_end) : "http";
     baseDomain = getBaseDomain(startUrl);
@@ -173,7 +181,7 @@ WebNode* NavigationTree::getRoot() {
 
 void NavigationTree::collectNodesToCheck(WebNode* node, std::vector<WebNode*>& nodesToCheck) {
     if (!node) return;
-    if (node->status == LinkStatus::NotChecked) {
+    if (node->depth > 0 && node->status == LinkStatus::NotChecked) {
         nodesToCheck.push_back(node);
     }
     for (WebNode* child : node->children) {
@@ -184,18 +192,12 @@ void NavigationTree::collectNodesToCheck(WebNode* node, std::vector<WebNode*>& n
 std::vector<std::string> NavigationTree::checkAllLinksStatus() {
     std::vector<std::string> brokenLinks;
     if (!root) return brokenLinks;
-
     std::vector<WebNode*> nodesToCheck;
     collectNodesToCheck(root, nodesToCheck);
-
-    if (nodesToCheck.empty()) {
-        return brokenLinks;
-    }
-
+    if (nodesToCheck.empty()) return brokenLinks;
     CURLM* multi_handle = curl_multi_init();
     std::list<RequestData> requests;
     const int MAX_PARALLEL = 50;
-
     for (WebNode* node : nodesToCheck) {
         CURL* eh = curl_easy_init();
         if (eh) {
@@ -208,39 +210,37 @@ std::vector<std::string> NavigationTree::checkAllLinksStatus() {
             curl_easy_setopt(eh, CURLOPT_SSL_VERIFYHOST, 0L);
             curl_easy_setopt(eh, CURLOPT_WRITEFUNCTION, write_callback_discard);
             curl_easy_setopt(eh, CURLOPT_WRITEDATA, NULL);
-
+            curl_easy_setopt(eh, CURLOPT_PRIVATE, node);
             RequestData req = { node, eh };
             requests.push_back(req);
         }
     }
-
     auto it = requests.begin();
     int handles_to_add = std::min((int)requests.size(), MAX_PARALLEL);
     for (int i = 0; i < handles_to_add; ++i) {
         curl_multi_add_handle(multi_handle, it->handle);
         ++it;
     }
-
     int still_running;
     do {
         curl_multi_perform(multi_handle, &still_running);
         curl_multi_wait(multi_handle, NULL, 0, 100, NULL);
-
         CURLMsg* msg;
         int msgs_left;
         while ((msg = curl_multi_info_read(multi_handle, &msgs_left))) {
             if (msg->msg == CURLMSG_DONE) {
                 CURL* easy_handle = msg->easy_handle;
-                auto req_it = std::find_if(requests.begin(), requests.end(), [easy_handle](const RequestData& r) { return r.handle == easy_handle; });
-                if (req_it != requests.end()) {
+                WebNode* node_ptr = nullptr;
+                curl_easy_getinfo(easy_handle, CURLINFO_PRIVATE, &node_ptr);
+                if (node_ptr) {
                     long http_code = 0;
                     curl_easy_getinfo(easy_handle, CURLINFO_RESPONSE_CODE, &http_code);
                     if (msg->data.result != CURLE_OK || http_code >= 400) {
-                        req_it->node->status = LinkStatus::Broken;
-                        brokenLinks.push_back(req_it->node->url);
+                        node_ptr->status = LinkStatus::Broken;
+                        brokenLinks.push_back(node_ptr->url);
                     }
                     else {
-                        req_it->node->status = LinkStatus::OK;
+                        node_ptr->status = LinkStatus::OK;
                     }
                 }
                 curl_multi_remove_handle(multi_handle, easy_handle);
@@ -252,7 +252,107 @@ std::vector<std::string> NavigationTree::checkAllLinksStatus() {
             }
         }
     } while (still_running > 0);
-
     curl_multi_cleanup(multi_handle);
     return brokenLinks;
+}
+
+PathResult NavigationTree::findShortestPathToKeyword(const std::string& keyword) {
+    PathResult result;
+    if (!root) {
+        return result;
+    }
+    std::queue<WebNode*> q;
+    std::map<WebNode*, WebNode*> parentMap;
+    std::unordered_set<WebNode*> visitedNodes;
+    q.push(root);
+    visitedNodes.insert(root);
+    parentMap[root] = nullptr;
+    WebNode* foundNode = nullptr;
+    while (!q.empty()) {
+        WebNode* current = q.front();
+        q.pop();
+        std::string urlLower = current->url;
+        std::transform(urlLower.begin(), urlLower.end(), urlLower.begin(),
+            [](unsigned char c) { return std::tolower(c); });
+        std::string keywordLower = keyword;
+        std::transform(keywordLower.begin(), keywordLower.end(), keywordLower.begin(),
+            [](unsigned char c) { return std::tolower(c); });
+        if (urlLower.find(keywordLower) != std::string::npos) {
+            foundNode = current;
+            break;
+        }
+        for (WebNode* child : current->children) {
+            if (visitedNodes.find(child) == visitedNodes.end()) {
+                visitedNodes.insert(child);
+                parentMap[child] = current;
+                q.push(child);
+            }
+        }
+    }
+    if (foundNode) {
+        result.found = true;
+        WebNode* curr = foundNode;
+        while (curr != nullptr) {
+            result.path.insert(result.path.begin(), curr->url);
+            curr = parentMap[curr];
+        }
+    }
+    return result;
+}
+
+
+// ================== NUEVA LÓGICA COMPLETA PARA EL DIBUJO DEL ÁRBOL ==================
+
+void NavigationTree::firstWalk(WebNode* node, std::map<int, float>& next_x_at_level) {
+    for (WebNode* child : node->children) {
+        firstWalk(child, next_x_at_level);
+    }
+
+    node->y_pos = (float)node->depth;
+
+    if (node->children.empty()) {
+        // Si es una hoja, le asignamos la siguiente posición X disponible en su nivel
+        node->x_pos = next_x_at_level[node->depth];
+        next_x_at_level[node->depth] += 1.5f; // Aumentamos el espacio para el siguiente nodo hoja
+    }
+    else {
+        // Si no es una hoja, se posiciona en el centro de sus hijos
+        float sum_x = 0.0f;
+        for (WebNode* child : node->children) {
+            sum_x += child->x_pos;
+        }
+        node->x_pos = sum_x / node->children.size();
+    }
+}
+
+void NavigationTree::calculateNodePositions() {
+    if (!root || positionsCalculated) return;
+
+    std::map<int, float> next_x_at_level;
+    firstWalk(root, next_x_at_level);
+
+    positionsCalculated = true;
+}
+
+void NavigationTree::populateDrawableTree(WebNode* node, std::vector<DrawableNodeInfo>& tree) {
+    if (!node) return;
+
+    DrawableNodeInfo dNode;
+    dNode.nodePtr = node;
+    dNode.x = node->x_pos;
+    dNode.y = node->y_pos;
+    tree.push_back(dNode);
+
+    for (WebNode* child : node->children) {
+        populateDrawableTree(child, tree);
+    }
+}
+
+const std::vector<DrawableNodeInfo>& NavigationTree::getDrawableTree() {
+    if (!positionsCalculated) {
+        calculateNodePositions();
+        drawableTreeCache.clear();
+        populateDrawableTree(root, drawableTreeCache);
+    }
+    return drawableTreeCache;
 }

@@ -7,11 +7,15 @@
 
 class NavigationTree;
 struct AnalysisResult;
+struct PathResult;
+struct DrawableNodeInfo;
 
 namespace NexusCrawlerApp {
 
 	using namespace System;
 	using namespace System::ComponentModel;
+	using namespace System::Collections;
+	using namespace System::Collections::Generic;
 	using namespace System::Windows::Forms;
 	using namespace System::Drawing;
 	using namespace System::Drawing::Drawing2D;
@@ -19,6 +23,15 @@ namespace NexusCrawlerApp {
 	public ref struct CrawlArgs {
 		String^ Url;
 		int Depth;
+	};
+
+	public ref struct SearchArgs {
+		String^ Keyword;
+	};
+
+	public ref struct PathResultManaged {
+		bool found;
+		List<String^>^ path;
 	};
 
 	public ref class MyForm : public System::Windows::Forms::Form
@@ -32,6 +45,7 @@ namespace NexusCrawlerApp {
 		NavigationTree* crawler;
 		BackgroundWorker^ crawlWorker;
 		BackgroundWorker^ linkCheckWorker;
+		BackgroundWorker^ searchWorker;
 		System::ComponentModel::Container^ components;
 
 		Panel^ panelInicio;
@@ -73,6 +87,10 @@ namespace NexusCrawlerApp {
 		Panel^ panelArbolGrafico;
 		Button^ btnVolverResumen;
 
+		float zoomLevel;
+		PointF panOffset;
+		Point lastMousePos;
+
 #pragma region Windows Form Designer generated code
 		void InitializeComponent(void);
 #pragma endregion
@@ -81,7 +99,6 @@ namespace NexusCrawlerApp {
 		void SwitchPanel(Panel^ panelToShow);
 		System::Void btnIniciarAnalisis_Click(System::Object^ sender, System::EventArgs^ e);
 		System::Void panelBotonAnalisis_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e);
-		System::Void panelArbolGrafico_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e);
 		System::Void btnExportar_Click(System::Object^ sender, System::EventArgs^ e);
 		System::Void btnDetectarRotos_Click(System::Object^ sender, System::EventArgs^ e);
 		System::Void btnBuscarPalabra_Click(System::Object^ sender, System::EventArgs^ e);
@@ -93,5 +110,16 @@ namespace NexusCrawlerApp {
 		System::Void crawlWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e);
 		System::Void linkCheckWorker_DoWork(System::Object^ sender, System::ComponentModel::DoWorkEventArgs^ e);
 		System::Void linkCheckWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e);
+		System::Void searchWorker_DoWork(System::Object^ sender, System::ComponentModel::DoWorkEventArgs^ e);
+		System::Void searchWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e);
+
+		System::Void rtbAccionResultado_LinkClicked(System::Object^ sender, System::Windows::Forms::LinkClickedEventArgs^ e);
+		System::Void txtPalabraClave_Enter(System::Object^ sender, System::EventArgs^ e);
+		System::Void txtPalabraClave_Leave(System::Object^ sender, System::EventArgs^ e);
+
+		System::Void panelArbolGrafico_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e);
+		System::Void panelArbolGrafico_MouseWheel(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e);
+		System::Void panelArbolGrafico_MouseDown(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e);
+		System::Void panelArbolGrafico_MouseMove(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e);
 	};
 }
