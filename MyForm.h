@@ -87,6 +87,9 @@ namespace NexusCrawlerApp {
 		Panel^ panelArbolGrafico;
 		Button^ btnVolverResumen;
 
+		Panel^ panelBtnNuevoAnalisis; 
+		Label^ lblBtnNuevoAnalisis; 
+
 		float zoomLevel;
 		PointF panOffset;
 		Point lastMousePos;
@@ -105,6 +108,7 @@ namespace NexusCrawlerApp {
 		System::Void panelAccion_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e);
 		System::Void btnVisualizarArbol_Click(System::Object^ sender, System::EventArgs^ e);
 		System::Void btnVolverResumen_Click(System::Object^ sender, System::EventArgs^ e);
+		System::Void btnNuevoAnalisis_Click(System::Object^ sender, System::EventArgs^ e);
 
 		System::Void crawlWorker_DoWork(System::Object^ sender, System::ComponentModel::DoWorkEventArgs^ e);
 		System::Void crawlWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e);

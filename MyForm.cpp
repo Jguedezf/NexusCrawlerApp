@@ -394,6 +394,31 @@ System::Void MyForm::panelAccion_Paint(System::Object^ sender, System::Windows::
 	delete path;
 }
 
+System::Void MyForm::btnNuevoAnalisis_Click(System::Object^ sender, System::EventArgs^ e) {
+	System::Windows::Forms::DialogResult confirmResult = MessageBox::Show(
+		"¿Está seguro de que desea iniciar un nuevo análisis? Se perderán los resultados actuales.",
+		"Confirmar Nuevo Análisis",
+		MessageBoxButtons::YesNo,
+		MessageBoxIcon::Question);
+
+	if (confirmResult == System::Windows::Forms::DialogResult::Yes) {
+		// 2. Limpiar el estado de la capa de negocio
+		// Esto es CRUCIAL. Debemos liberar el árbol viejo y resetear el estado.
+		// Asumiendo que `startCrawling` ya maneja la limpieza del árbol anterior, 
+		// lo cual es una buena práctica y tu código parece hacerlo.
+		// Si no, necesitaríamos un método `crawler->reset()`
+
+		// 3. Limpiar la UI de resultados
+		this->rtbAccionResultado->Clear();
+		this->lblAccionResultadoTitulo->Text = "Resultados de la Acción:";
+		this->txtPalabraClave->Text = "Ingrese palabra clave aquí...";
+		this->txtPalabraClave->ForeColor = Color::Gray;
+
+		// 4. Volver al panel de inicio
+		SwitchPanel(panelInicio);
+	}
+}
+
 #pragma region Windows Form Designer generated code
 void MyForm::InitializeComponent(void)
 {
@@ -439,6 +464,8 @@ void MyForm::InitializeComponent(void)
 	this->lblEnlacesExternos = (gcnew System::Windows::Forms::Label());
 	this->lblProfundidadReal = (gcnew System::Windows::Forms::Label());
 	this->panelArbolGrafico = (gcnew System::Windows::Forms::Panel());
+	this->panelBtnNuevoAnalisis = (gcnew System::Windows::Forms::Panel());
+	this->lblBtnNuevoAnalisis = (gcnew System::Windows::Forms::Label());
 	this->panelInicio->SuspendLayout();
 	this->panelInputContainer->SuspendLayout();
 	(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->numProfundidad))->BeginInit();
@@ -451,6 +478,7 @@ void MyForm::InitializeComponent(void)
 	this->panelBtnDetectarRotos->SuspendLayout();
 	this->panelBtnExportar->SuspendLayout();
 	this->grpAccionResultado->SuspendLayout();
+	this->panelBtnNuevoAnalisis->SuspendLayout();
 	this->SuspendLayout();
 	// 
 	// panelInicio
@@ -500,7 +528,7 @@ void MyForm::InitializeComponent(void)
 	this->txtUrl->Name = L"txtUrl";
 	this->txtUrl->Size = System::Drawing::Size(412, 32);
 	this->txtUrl->TabIndex = 1;
-	this->txtUrl->Text = L""; // URL por defecto eliminada
+	this->txtUrl->Text = L""; 
 	// 
 	// lblEjemploUrl
 	// 
@@ -627,92 +655,72 @@ void MyForm::InitializeComponent(void)
 	this->panelResultados->Size = System::Drawing::Size(900, 700);
 	this->panelResultados->TabIndex = 4;
 	// 
-	// grpResumen
+	// btnVolverResumen
 	// 
-	this->grpResumen->Controls->Add(this->lblResumenTitulo);
-	this->grpResumen->Controls->Add(this->lblUrlAnalizada);
-	this->grpResumen->Controls->Add(this->lblProfundidadSolicitada);
-	this->grpResumen->Controls->Add(this->lblTotalNodos);
-	this->grpResumen->Controls->Add(this->lblEnlacesInternos);
-	this->grpResumen->Controls->Add(this->lblEnlacesExternos);
-	this->grpResumen->Controls->Add(this->lblProfundidadReal);
-	this->grpResumen->ForeColor = System::Drawing::Color::White;
-	this->grpResumen->Location = System::Drawing::Point(20, 20);
-	this->grpResumen->Name = L"grpResumen";
-	this->grpResumen->Size = System::Drawing::Size(420, 260);
-	this->grpResumen->TabIndex = 0;
-	this->grpResumen->TabStop = false;
-	this->grpResumen->Text = L"Resumen del Análisis";
+	this->btnVolverResumen->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left));
+	this->btnVolverResumen->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9, System::Drawing::FontStyle::Bold));
+	this->btnVolverResumen->ForeColor = System::Drawing::Color::Black;
+	this->btnVolverResumen->Location = System::Drawing::Point(20, 640);
+	this->btnVolverResumen->Name = L"btnVolverResumen";
+	this->btnVolverResumen->Size = System::Drawing::Size(180, 30);
+	this->btnVolverResumen->TabIndex = 5;
+	this->btnVolverResumen->Text = L"< Volver al Resumen";
+	this->btnVolverResumen->Visible = false;
+	this->btnVolverResumen->Click += gcnew System::EventHandler(this, &MyForm::btnVolverResumen_Click);
 	// 
-	// lblResumenTitulo
+	// grpAccionResultado
 	// 
-	this->lblResumenTitulo->AutoSize = true;
-	this->lblResumenTitulo->Font = (gcnew System::Drawing::Font(L"Segoe UI", 14, System::Drawing::FontStyle::Bold));
-	this->lblResumenTitulo->Location = System::Drawing::Point(15, 25);
-	this->lblResumenTitulo->Name = L"lblResumenTitulo";
-	this->lblResumenTitulo->Size = System::Drawing::Size(331, 32);
-	this->lblResumenTitulo->TabIndex = 0;
-	this->lblResumenTitulo->Text = L">>> RESUMEN DEL ANÁLISIS";
+	this->grpAccionResultado->Controls->Add(this->rtbAccionResultado);
+	this->grpAccionResultado->Controls->Add(this->lblAccionResultadoTitulo);
+	this->grpAccionResultado->Controls->Add(this->txtPalabraClave);
+	this->grpAccionResultado->ForeColor = System::Drawing::Color::White;
+	this->grpAccionResultado->Location = System::Drawing::Point(460, 150);
+	this->grpAccionResultado->Name = L"grpAccionResultado";
+	this->grpAccionResultado->Size = System::Drawing::Size(420, 240);
+	this->grpAccionResultado->TabIndex = 3;
+	this->grpAccionResultado->TabStop = false;
+	this->grpAccionResultado->Text = L"Búsqueda y Resultados";
 	// 
-	// lblUrlAnalizada
+	// rtbAccionResultado
 	// 
-	this->lblUrlAnalizada->AutoSize = true;
-	this->lblUrlAnalizada->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
-	this->lblUrlAnalizada->Location = System::Drawing::Point(15, 70);
-	this->lblUrlAnalizada->Name = L"lblUrlAnalizada";
-	this->lblUrlAnalizada->Size = System::Drawing::Size(155, 23);
-	this->lblUrlAnalizada->TabIndex = 1;
-	this->lblUrlAnalizada->Text = L"URL Raíz Analizada:";
+	this->rtbAccionResultado->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom)
+		| System::Windows::Forms::AnchorStyles::Left));
+	this->rtbAccionResultado->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(42)), static_cast<System::Int32>(static_cast<System::Byte>(41)), static_cast<System::Int32>(static_cast<System::Byte>(64)));
+	this->rtbAccionResultado->BorderStyle = System::Windows::Forms::BorderStyle::None;
+	this->rtbAccionResultado->Font = (gcnew System::Drawing::Font(L"Consolas", 10.2F));
+	this->rtbAccionResultado->ForeColor = System::Drawing::Color::Gainsboro;
+	this->rtbAccionResultado->Location = System::Drawing::Point(15, 100);
+	this->rtbAccionResultado->Name = L"rtbAccionResultado";
+	this->rtbAccionResultado->ReadOnly = true;
+	this->rtbAccionResultado->Size = System::Drawing::Size(390, 125);
+	this->rtbAccionResultado->TabIndex = 3;
+	this->rtbAccionResultado->Text = L"";
+	this->rtbAccionResultado->DetectUrls = true;
+	this->rtbAccionResultado->LinkClicked += gcnew System::Windows::Forms::LinkClickedEventHandler(this, &MyForm::rtbAccionResultado_LinkClicked);
 	// 
-	// lblProfundidadSolicitada
+	// lblAccionResultadoTitulo
 	// 
-	this->lblProfundidadSolicitada->AutoSize = true;
-	this->lblProfundidadSolicitada->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
-	this->lblProfundidadSolicitada->Location = System::Drawing::Point(15, 100);
-	this->lblProfundidadSolicitada->Name = L"lblProfundidadSolicitada";
-	this->lblProfundidadSolicitada->Size = System::Drawing::Size(262, 23);
-	this->lblProfundidadSolicitada->TabIndex = 2;
-	this->lblProfundidadSolicitada->Text = L"Profundidad de Análisis Solicitada:";
+	this->lblAccionResultadoTitulo->AutoSize = true;
+	this->lblAccionResultadoTitulo->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10.2F, System::Drawing::FontStyle::Bold));
+	this->lblAccionResultadoTitulo->Location = System::Drawing::Point(15, 70);
+	this->lblAccionResultadoTitulo->Name = L"lblAccionResultadoTitulo";
+	this->lblAccionResultadoTitulo->Size = System::Drawing::Size(201, 23);
+	this->lblAccionResultadoTitulo->TabIndex = 1;
+	this->lblAccionResultadoTitulo->Text = L"Resultados de la Acción:";
 	// 
-	// lblTotalNodos
+	// txtPalabraClave
 	// 
-	this->lblTotalNodos->AutoSize = true;
-	this->lblTotalNodos->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
-	this->lblTotalNodos->Location = System::Drawing::Point(15, 130);
-	this->lblTotalNodos->Name = L"lblTotalNodos";
-	this->lblTotalNodos->Size = System::Drawing::Size(292, 23);
-	this->lblTotalNodos->TabIndex = 3;
-	this->lblTotalNodos->Text = L"Total de Nodos/Páginas Descubiertas:";
-	// 
-	// lblEnlacesInternos
-	// 
-	this->lblEnlacesInternos->AutoSize = true;
-	this->lblEnlacesInternos->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
-	this->lblEnlacesInternos->Location = System::Drawing::Point(15, 160);
-	this->lblEnlacesInternos->Name = L"lblEnlacesInternos";
-	this->lblEnlacesInternos->Size = System::Drawing::Size(232, 23);
-	this->lblEnlacesInternos->TabIndex = 4;
-	this->lblEnlacesInternos->Text = L"Enlaces Internos Encontrados:";
-	// 
-	// lblEnlacesExternos
-	// 
-	this->lblEnlacesExternos->AutoSize = true;
-	this->lblEnlacesExternos->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
-	this->lblEnlacesExternos->Location = System::Drawing::Point(15, 190);
-	this->lblEnlacesExternos->Name = L"lblEnlacesExternos";
-	this->lblEnlacesExternos->Size = System::Drawing::Size(236, 23);
-	this->lblEnlacesExternos->TabIndex = 5;
-	this->lblEnlacesExternos->Text = L"Enlaces Externos Encontrados:";
-	// 
-	// lblProfundidadReal
-	// 
-	this->lblProfundidadReal->AutoSize = true;
-	this->lblProfundidadReal->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
-	this->lblProfundidadReal->Location = System::Drawing::Point(15, 220);
-	this->lblProfundidadReal->Name = L"lblProfundidadReal";
-	this->lblProfundidadReal->Size = System::Drawing::Size(268, 23);
-	this->lblProfundidadReal->TabIndex = 6;
-	this->lblProfundidadReal->Text = L"Profundidad Máxima Real del Árbol:";
+	this->txtPalabraClave->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(28)), static_cast<System::Int32>(static_cast<System::Byte>(27)), static_cast<System::Int32>(static_cast<System::Byte>(45)));
+	this->txtPalabraClave->BorderStyle = System::Windows::Forms::BorderStyle::FixedSingle;
+	this->txtPalabraClave->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10.2F));
+	this->txtPalabraClave->ForeColor = System::Drawing::Color::Gray;
+	this->txtPalabraClave->Location = System::Drawing::Point(15, 30);
+	this->txtPalabraClave->Name = L"txtPalabraClave";
+	this->txtPalabraClave->Size = System::Drawing::Size(390, 30);
+	this->txtPalabraClave->TabIndex = 2;
+	this->txtPalabraClave->Text = L"Ingrese palabra clave aquí...";
+	this->txtPalabraClave->Enter += gcnew System::EventHandler(this, &MyForm::txtPalabraClave_Enter);
+	this->txtPalabraClave->Leave += gcnew System::EventHandler(this, &MyForm::txtPalabraClave_Leave);
 	// 
 	// grpAcciones
 	// 
@@ -824,59 +832,93 @@ void MyForm::InitializeComponent(void)
 	this->lblBtnExportar->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
 	this->lblBtnExportar->Click += gcnew System::EventHandler(this, &MyForm::btnExportar_Click);
 	// 
-	// grpAccionResultado
+	// grpResumen
 	// 
-	this->grpAccionResultado->Controls->Add(this->rtbAccionResultado);
-	this->grpAccionResultado->Controls->Add(this->lblAccionResultadoTitulo);
-	this->grpAccionResultado->Controls->Add(this->txtPalabraClave);
-	this->grpAccionResultado->ForeColor = System::Drawing::Color::White;
-	this->grpAccionResultado->Location = System::Drawing::Point(460, 150);
-	this->grpAccionResultado->Name = L"grpAccionResultado";
-	this->grpAccionResultado->Size = System::Drawing::Size(420, 240);
-	this->grpAccionResultado->TabIndex = 3;
-	this->grpAccionResultado->TabStop = false;
-	this->grpAccionResultado->Text = L"Búsqueda y Resultados";
+	this->grpResumen->Controls->Add(this->lblResumenTitulo);
+	this->grpResumen->Controls->Add(this->lblUrlAnalizada);
+	this->grpResumen->Controls->Add(this->lblProfundidadSolicitada);
+	this->grpResumen->Controls->Add(this->lblTotalNodos);
+	this->grpResumen->Controls->Add(this->lblEnlacesInternos);
+	this->grpResumen->Controls->Add(this->lblEnlacesExternos);
+	this->grpResumen->Controls->Add(this->lblProfundidadReal);
+	this->grpResumen->Controls->Add(this->panelBtnNuevoAnalisis);
+	this->grpResumen->ForeColor = System::Drawing::Color::White;
+	this->grpResumen->Location = System::Drawing::Point(20, 20);
+	this->grpResumen->Name = L"grpResumen";
+	this->grpResumen->Size = System::Drawing::Size(420, 320);
+	this->grpResumen->TabIndex = 0;
+	this->grpResumen->TabStop = false;
+	this->grpResumen->Text = L"Resumen del Análisis";
 	// 
-	// txtPalabraClave
+	// lblResumenTitulo
 	// 
-	this->txtPalabraClave->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(28)), static_cast<System::Int32>(static_cast<System::Byte>(27)), static_cast<System::Int32>(static_cast<System::Byte>(45)));
-	this->txtPalabraClave->BorderStyle = System::Windows::Forms::BorderStyle::FixedSingle;
-	this->txtPalabraClave->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10.2F));
-	this->txtPalabraClave->ForeColor = System::Drawing::Color::Gray;
-	this->txtPalabraClave->Location = System::Drawing::Point(15, 30);
-	this->txtPalabraClave->Name = L"txtPalabraClave";
-	this->txtPalabraClave->Size = System::Drawing::Size(390, 30);
-	this->txtPalabraClave->TabIndex = 2;
-	this->txtPalabraClave->Text = L"Ingrese palabra clave aquí...";
-	this->txtPalabraClave->Enter += gcnew System::EventHandler(this, &MyForm::txtPalabraClave_Enter);
-	this->txtPalabraClave->Leave += gcnew System::EventHandler(this, &MyForm::txtPalabraClave_Leave);
+	this->lblResumenTitulo->AutoSize = true;
+	this->lblResumenTitulo->Font = (gcnew System::Drawing::Font(L"Segoe UI", 14, System::Drawing::FontStyle::Bold));
+	this->lblResumenTitulo->Location = System::Drawing::Point(15, 25);
+	this->lblResumenTitulo->Name = L"lblResumenTitulo";
+	this->lblResumenTitulo->Size = System::Drawing::Size(331, 32);
+	this->lblResumenTitulo->TabIndex = 0;
+	this->lblResumenTitulo->Text = L">>> RESUMEN DEL ANÁLISIS";
 	// 
-	// lblAccionResultadoTitulo
+	// lblUrlAnalizada
 	// 
-	this->lblAccionResultadoTitulo->AutoSize = true;
-	this->lblAccionResultadoTitulo->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10.2F, System::Drawing::FontStyle::Bold));
-	this->lblAccionResultadoTitulo->Location = System::Drawing::Point(15, 70);
-	this->lblAccionResultadoTitulo->Name = L"lblAccionResultadoTitulo";
-	this->lblAccionResultadoTitulo->Size = System::Drawing::Size(201, 23);
-	this->lblAccionResultadoTitulo->TabIndex = 1;
-	this->lblAccionResultadoTitulo->Text = L"Resultados de la Acción:";
+	this->lblUrlAnalizada->AutoSize = true;
+	this->lblUrlAnalizada->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
+	this->lblUrlAnalizada->Location = System::Drawing::Point(15, 70);
+	this->lblUrlAnalizada->Name = L"lblUrlAnalizada";
+	this->lblUrlAnalizada->Size = System::Drawing::Size(155, 23);
+	this->lblUrlAnalizada->TabIndex = 1;
+	this->lblUrlAnalizada->Text = L"URL Raíz Analizada:";
 	// 
-	// rtbAccionResultado
+	// lblProfundidadSolicitada
 	// 
-	this->rtbAccionResultado->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom)
-		| System::Windows::Forms::AnchorStyles::Left));
-	this->rtbAccionResultado->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(42)), static_cast<System::Int32>(static_cast<System::Byte>(41)), static_cast<System::Int32>(static_cast<System::Byte>(64)));
-	this->rtbAccionResultado->BorderStyle = System::Windows::Forms::BorderStyle::None;
-	this->rtbAccionResultado->Font = (gcnew System::Drawing::Font(L"Consolas", 10.2F));
-	this->rtbAccionResultado->ForeColor = System::Drawing::Color::Gainsboro;
-	this->rtbAccionResultado->Location = System::Drawing::Point(15, 100);
-	this->rtbAccionResultado->Name = L"rtbAccionResultado";
-	this->rtbAccionResultado->ReadOnly = true;
-	this->rtbAccionResultado->Size = System::Drawing::Size(390, 125);
-	this->rtbAccionResultado->TabIndex = 3;
-	this->rtbAccionResultado->Text = L"";
-	this->rtbAccionResultado->DetectUrls = true;
-	this->rtbAccionResultado->LinkClicked += gcnew System::Windows::Forms::LinkClickedEventHandler(this, &MyForm::rtbAccionResultado_LinkClicked);
+	this->lblProfundidadSolicitada->AutoSize = true;
+	this->lblProfundidadSolicitada->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
+	this->lblProfundidadSolicitada->Location = System::Drawing::Point(15, 100);
+	this->lblProfundidadSolicitada->Name = L"lblProfundidadSolicitada";
+	this->lblProfundidadSolicitada->Size = System::Drawing::Size(262, 23);
+	this->lblProfundidadSolicitada->TabIndex = 2;
+	this->lblProfundidadSolicitada->Text = L"Profundidad de Análisis Solicitada:";
+	// 
+	// lblTotalNodos
+	// 
+	this->lblTotalNodos->AutoSize = true;
+	this->lblTotalNodos->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
+	this->lblTotalNodos->Location = System::Drawing::Point(15, 130);
+	this->lblTotalNodos->Name = L"lblTotalNodos";
+	this->lblTotalNodos->Size = System::Drawing::Size(292, 23);
+	this->lblTotalNodos->TabIndex = 3;
+	this->lblTotalNodos->Text = L"Total de Nodos/Páginas Descubiertas:";
+	// 
+	// lblEnlacesInternos
+	// 
+	this->lblEnlacesInternos->AutoSize = true;
+	this->lblEnlacesInternos->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
+	this->lblEnlacesInternos->Location = System::Drawing::Point(15, 160);
+	this->lblEnlacesInternos->Name = L"lblEnlacesInternos";
+	this->lblEnlacesInternos->Size = System::Drawing::Size(232, 23);
+	this->lblEnlacesInternos->TabIndex = 4;
+	this->lblEnlacesInternos->Text = L"Enlaces Internos Encontrados:";
+	// 
+	// lblEnlacesExternos
+	// 
+	this->lblEnlacesExternos->AutoSize = true;
+	this->lblEnlacesExternos->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
+	this->lblEnlacesExternos->Location = System::Drawing::Point(15, 190);
+	this->lblEnlacesExternos->Name = L"lblEnlacesExternos";
+	this->lblEnlacesExternos->Size = System::Drawing::Size(236, 23);
+	this->lblEnlacesExternos->TabIndex = 5;
+	this->lblEnlacesExternos->Text = L"Enlaces Externos Encontrados:";
+	// 
+	// lblProfundidadReal
+	// 
+	this->lblProfundidadReal->AutoSize = true;
+	this->lblProfundidadReal->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
+	this->lblProfundidadReal->Location = System::Drawing::Point(15, 220);
+	this->lblProfundidadReal->Name = L"lblProfundidadReal";
+	this->lblProfundidadReal->Size = System::Drawing::Size(268, 23);
+	this->lblProfundidadReal->TabIndex = 6;
+	this->lblProfundidadReal->Text = L"Profundidad Máxima Real del Árbol:";
 	// 
 	// panelArbolGrafico
 	// 
@@ -894,19 +936,31 @@ void MyForm::InitializeComponent(void)
 	this->panelArbolGrafico->MouseWheel += gcnew System::Windows::Forms::MouseEventHandler(this, &MyForm::panelArbolGrafico_MouseWheel);
 	this->panelArbolGrafico->MouseDown += gcnew System::Windows::Forms::MouseEventHandler(this, &MyForm::panelArbolGrafico_MouseDown);
 	this->panelArbolGrafico->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &MyForm::panelArbolGrafico_MouseMove);
+	//
+	// panelBtnNuevoAnalisis
 	// 
-	// btnVolverResumen
+	this->panelBtnNuevoAnalisis->Controls->Add(this->lblBtnNuevoAnalisis);
+	this->panelBtnNuevoAnalisis->Cursor = System::Windows::Forms::Cursors::Hand;
+	this->panelBtnNuevoAnalisis->Location = System::Drawing::Point(20, 260);
+	this->panelBtnNuevoAnalisis->Name = L"panelBtnNuevoAnalisis";
+	this->panelBtnNuevoAnalisis->Size = System::Drawing::Size(180, 40);
+	this->panelBtnNuevoAnalisis->TabIndex = 7;
+	this->panelBtnNuevoAnalisis->Click += gcnew System::EventHandler(this, &MyForm::btnNuevoAnalisis_Click);
+	this->panelBtnNuevoAnalisis->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &MyForm::panelAccion_Paint);
 	// 
-	this->btnVolverResumen->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left));
-	this->btnVolverResumen->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9, System::Drawing::FontStyle::Bold));
-	this->btnVolverResumen->ForeColor = System::Drawing::Color::Black;
-	this->btnVolverResumen->Location = System::Drawing::Point(20, 640);
-	this->btnVolverResumen->Name = L"btnVolverResumen";
-	this->btnVolverResumen->Size = System::Drawing::Size(180, 30);
-	this->btnVolverResumen->TabIndex = 5;
-	this->btnVolverResumen->Text = L"< Volver al Resumen";
-	this->btnVolverResumen->Visible = false;
-	this->btnVolverResumen->Click += gcnew System::EventHandler(this, &MyForm::btnVolverResumen_Click);
+	// lblBtnNuevoAnalisis
+	// 
+	this->lblBtnNuevoAnalisis->BackColor = System::Drawing::Color::Transparent;
+	this->lblBtnNuevoAnalisis->Dock = System::Windows::Forms::DockStyle::Fill;
+	this->lblBtnNuevoAnalisis->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9, System::Drawing::FontStyle::Bold));
+	this->lblBtnNuevoAnalisis->ForeColor = System::Drawing::Color::White;
+	this->lblBtnNuevoAnalisis->Location = System::Drawing::Point(0, 0);
+	this->lblBtnNuevoAnalisis->Name = L"lblBtnNuevoAnalisis";
+	this->lblBtnNuevoAnalisis->Size = System::Drawing::Size(180, 40);
+	this->lblBtnNuevoAnalisis->TabIndex = 0;
+	this->lblBtnNuevoAnalisis->Text = L"NUEVO ANÁLISIS";
+	this->lblBtnNuevoAnalisis->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
+	this->lblBtnNuevoAnalisis->Click += gcnew System::EventHandler(this, &MyForm::btnNuevoAnalisis_Click);
 	// 
 	// MyForm
 	// 
@@ -932,11 +986,17 @@ void MyForm::InitializeComponent(void)
 	this->grpResumen->PerformLayout();
 	this->grpAcciones->ResumeLayout(false);
 	this->panelBtnVisualizar->ResumeLayout(false);
+	this->lblBtnVisualizar->ResumeLayout(false);
 	this->panelBtnBuscarPalabra->ResumeLayout(false);
+	this->lblBtnBuscarPalabra->ResumeLayout(false);
 	this->panelBtnDetectarRotos->ResumeLayout(false);
+	this->lblBtnDetectarRotos->ResumeLayout(false);
 	this->panelBtnExportar->ResumeLayout(false);
+	this->lblBtnExportar->ResumeLayout(false);
 	this->grpAccionResultado->ResumeLayout(false);
 	this->grpAccionResultado->PerformLayout();
+	this->panelBtnNuevoAnalisis->ResumeLayout(false);
+	this->lblBtnNuevoAnalisis->ResumeLayout(false);
 	this->ResumeLayout(false);
 	// 
 	// crawlWorker
