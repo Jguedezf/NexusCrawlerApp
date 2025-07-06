@@ -657,9 +657,10 @@ void MyForm::InitializeComponent(void)
 	// 
 	// btnVolverResumen
 	// 
+	this->btnVolverResumen->BackColor = System::Drawing::Color::Firebrick;
 	this->btnVolverResumen->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left));
 	this->btnVolverResumen->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9, System::Drawing::FontStyle::Bold));
-	this->btnVolverResumen->ForeColor = System::Drawing::Color::Black;
+	this->btnVolverResumen->ForeColor = System::Drawing::Color::White;
 	this->btnVolverResumen->Location = System::Drawing::Point(20, 640);
 	this->btnVolverResumen->Name = L"btnVolverResumen";
 	this->btnVolverResumen->Size = System::Drawing::Size(180, 30);
