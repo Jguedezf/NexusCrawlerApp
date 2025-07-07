@@ -11,32 +11,26 @@
     <Filter Include="DataAccessLayer">
       <UniqueIdentifier>{35146000-1bce-42f3-8607-d2223ea715f0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="PresentationLayer.h">
+    <Filter Include="PresentationLayer">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="PresentationLayer.cpp">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="MyForm.cpp">
-      <Filter>PresentationLayer.cpp</Filter>
-    </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>PresentationLayer.cpp</Filter>
-    </ClCompile>
     <ClCompile Include="BusinessLogic.cpp">
       <Filter>BusinessLogicLayer</Filter>
     </ClCompile>
     <ClCompile Include="DataAccess.cpp">
       <Filter>DataAccessLayer</Filter>
     </ClCompile>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="MyForm.cpp">
+      <Filter>PresentationLayer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MyForm.h">
-      <Filter>PresentationLayer.h</Filter>
+      <Filter>PresentationLayer</Filter>
     </ClInclude>
     <ClInclude Include="BusinessLogic.h">
       <Filter>BusinessLogicLayer</Filter>

@@ -52,7 +52,7 @@ bool DataAccess::exportTreeToHtml(WebNode* root, const std::string& filePath, co
 	file << "<html lang='es'>\n";
 	file << "<head>\n";
 	file << "  <meta charset='UTF-8'>\n";
-	file << "  <title>Reporte de Análisis - NexusCrawler</title>\n";
+	file << "  <title>Reporte de Analisis - NexusCrawler</title>\n";
 	file << "  <style>\n";
 	file << "    :root { --bg-dark: #1c1b2d; --bg-medium: #2a2940; --accent: #885fff; --text-light: #f0f0f0; --text-medium: #c0c0ff; --line-color: rgba(136, 95, 255, 0.2); --neon-glow: rgba(136, 95, 255, 0.7); --tag-ext: #3b82f6; --tag-brk: #ef4444; }\n";
 	file << "    body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: var(--bg-dark); color: var(--text-light); margin: 0; padding: 20px; }\n";
