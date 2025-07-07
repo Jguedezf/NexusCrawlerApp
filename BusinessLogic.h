@@ -96,3 +96,4 @@ public:
     PathResult findShortestPathToKeyword(const std::string& keyword);
     const std::vector<DrawableNodeInfo>& getDrawableTree();
 };
+

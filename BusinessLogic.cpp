@@ -1,3 +1,4 @@
+
 #define NOMINMAX
 #include "BusinessLogic.h"
 #include <iostream>

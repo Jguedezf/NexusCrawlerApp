@@ -11,7 +11,8 @@ MyForm::MyForm(void)
 	InitializeComponent();
 	crawler = new NavigationTree();
 	this->zoomLevel = 1.0f;
-	this->panOffset = PointF(20, 20); // Margen inicial
+	this->panOffset = PointF(50, 50); // Aumentar margen inicial para el nuevo layout
+	this->isMouseOverExit = false; // Estado inicial del botón de salida
 	this->panelCarga->Visible = false;
 	this->panelResultados->Visible = false;
 	this->panelInicio->Visible = true;
@@ -53,6 +54,7 @@ System::Void MyForm::crawlWorker_RunWorkerCompleted(System::Object^ sender, Syst
 	if (e->Error != nullptr) {
 		MessageBox::Show("Ocurrió un error durante el análisis: " + e->Error->Message, "Error");
 		SwitchPanel(panelInicio);
+		this->panelBotonSalir->Visible = true; // Mostrar en inicio
 	}
 	else {
 		AnalysisResult result = crawler->getAnalysisResult();
@@ -63,6 +65,7 @@ System::Void MyForm::crawlWorker_RunWorkerCompleted(System::Object^ sender, Syst
 		this->lblEnlacesExternos->Text = "Enlaces Externos Encontrados: " + result.externalLinks;
 		this->lblProfundidadReal->Text = "Profundidad Máxima Real del Árbol: " + result.maxDepth;
 		SwitchPanel(panelResultados);
+		this->panelBotonSalir->Visible = false; // Ocultar aquí también
 	}
 }
 
@@ -144,7 +147,7 @@ System::Void MyForm::linkCheckWorker_RunWorkerCompleted(System::Object^ sender, 
 	}
 	else {
 		this->rtbAccionResultado->AppendText("Se encontraron " + brokenLinks->Count + " enlaces rotos:\r\n\r\n");
-		for each (String ^ link in brokenLinks) {
+		for each(String ^ link in brokenLinks) {
 			rtbAccionResultado->SelectionColor = Color::Tomato;
 			rtbAccionResultado->AppendText("[ROTO] ");
 			rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
@@ -230,6 +233,7 @@ System::Void MyForm::btnVisualizarArbol_Click(System::Object^ sender, System::Ev
 	this->panelArbolGrafico->BringToFront();
 	this->btnVolverResumen->BringToFront();
 	this->panelArbolGrafico->Invalidate();
+	this->panelBotonSalir->Visible = true;
 }
 
 System::Void MyForm::btnVolverResumen_Click(System::Object^ sender, System::EventArgs^ e) {
@@ -238,6 +242,7 @@ System::Void MyForm::btnVolverResumen_Click(System::Object^ sender, System::Even
 	this->grpAccionResultado->Visible = true;
 	this->panelArbolGrafico->Visible = false;
 	this->btnVolverResumen->Visible = false;
+	this->panelBotonSalir->Visible = false; // Ocultar aquí también
 }
 
 void MyForm::SwitchPanel(Panel^ panelToShow) {
@@ -256,6 +261,10 @@ System::Void MyForm::panelBotonAnalisis_Paint(System::Object^ sender, System::Wi
 	delete brush;
 }
 
+
+// =================================================================================
+// ===           NUEVA IMPLEMENTACIÓN DEL DIBUJO DEL ÁRBOL "NEON FLOWCHART"        ===
+// =================================================================================
 System::Void MyForm::panelArbolGrafico_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e) {
 	Graphics^ g = e->Graphics;
 	g->SmoothingMode = SmoothingMode::AntiAlias;
@@ -278,32 +287,42 @@ System::Void MyForm::panelArbolGrafico_Paint(System::Object^ sender, System::Win
 	g->TranslateTransform(panOffset.X, panOffset.Y);
 	g->ScaleTransform(zoomLevel, zoomLevel);
 
-	Pen^ linePen = gcnew Pen(Color::FromArgb(100, 100, 120), 1.5f);
-	Brush^ nodeBrushInternal = gcnew SolidBrush(Color::FromArgb(95, 175, 255));
-	Brush^ nodeBrushExternal = gcnew SolidBrush(Color::FromArgb(100, 100, 120));
-	Brush^ nodeBrushBroken = gcnew SolidBrush(Color::Tomato);
-	Brush^ textBrush = gcnew SolidBrush(Color::White);
-	System::Drawing::Font^ nodeFont = gcnew System::Drawing::Font("Segoe UI", 8);
-	float nodeWidth = 120.0f;
+	// --- Definición de estilo "Neon Flowchart" ---
+	Pen^ linePen = gcnew Pen(Color::FromArgb(150, 100, 200, 255), 2.0f); // Línea de circuito (Cyan/Azul)
+	linePen->LineJoin = LineJoin::Round; // Esquinas redondeadas para las conexiones
+
+	Brush^ nodeBrushInternal = gcnew SolidBrush(Color::FromArgb(42, 41, 64)); // Relleno oscuro
+	Brush^ nodeBrushExternal = gcnew SolidBrush(Color::FromArgb(60, 60, 80)); // Relleno para externos
+	Brush^ nodeBrushBroken = gcnew SolidBrush(Color::FromArgb(80, 40, 40)); // Relleno para rotos
+
+	Pen^ borderPenInternal = gcnew Pen(Color::FromArgb(95, 175, 255), 2.5f); // Borde neón azul
+	Pen^ borderPenExternal = gcnew Pen(Color::FromArgb(100, 100, 120), 2.5f); // Borde neón gris
+	Pen^ borderPenBroken = gcnew Pen(Color::Tomato, 2.5f); // Borde neón rojo
+
+	Brush^ textBrush = gcnew SolidBrush(Color::WhiteSmoke);
+	System::Drawing::Font^ nodeFont = gcnew System::Drawing::Font("Segoe UI", 8, FontStyle::Bold);
+	float nodeWidth = 150.0f;
 	float nodeHeight = 40.0f;
-	float x_spacing = 140.0f;
-	float y_spacing = 100.0f;
+	float cornerRadius = 20.0f;
+	float x_spacing = 180.0f;
+	float y_spacing = 120.0f;
 
 	std::map<WebNode*, PointF> positions;
 	for (const auto& dNodeInfo : drawableTree) {
 		positions[dNodeInfo.nodePtr] = PointF(dNodeInfo.x * x_spacing, dNodeInfo.y * y_spacing);
 	}
 
+	// --- Dibujar Conexiones (estilo circuito) ---
 	for (const auto& dNodeInfo : drawableTree) {
 		if (dNodeInfo.nodePtr == crawler->getRoot()) continue;
 		WebNode* parent = nullptr;
+		// (Esta lógica para encontrar el padre es ineficiente, pero funciona para la visualización. Se podría optimizar)
 		for (const auto& pInfo : drawableTree) {
 			bool found = false;
 			for (WebNode* child : pInfo.nodePtr->children) {
 				if (child == dNodeInfo.nodePtr) {
 					parent = pInfo.nodePtr;
-					found = true;
-					break;
+					found = true; break;
 				}
 			}
 			if (found) break;
@@ -312,36 +331,67 @@ System::Void MyForm::panelArbolGrafico_Paint(System::Object^ sender, System::Win
 		if (parent && positions.count(parent) > 0) {
 			PointF parentPos = positions[parent];
 			PointF childPos = positions[dNodeInfo.nodePtr];
-			g->DrawLine(linePen,
-				parentPos.X + nodeWidth / 2,
-				parentPos.Y + nodeHeight,
-				childPos.X + nodeWidth / 2,
-				childPos.Y);
+
+			float parentCenterX = parentPos.X + nodeWidth / 2;
+			float childCenterX = childPos.X + nodeWidth / 2;
+
+			// Puntos para la línea de 90 grados
+			PointF p1 = PointF(parentCenterX, parentPos.Y + nodeHeight);
+			PointF p2 = PointF(parentCenterX, parentPos.Y + nodeHeight + (y_spacing / 2));
+			PointF p3 = PointF(childCenterX, parentPos.Y + nodeHeight + (y_spacing / 2));
+			PointF p4 = PointF(childCenterX, childPos.Y);
+
+			g->DrawLine(linePen, p1, p2);
+			g->DrawLine(linePen, p2, p3);
+			g->DrawLine(linePen, p3, p4);
 		}
 	}
 
+	// --- Dibujar Nodos (cápsulas con borde neón) ---
 	for (const auto& dNodeInfo : drawableTree) {
 		PointF currentPos = positions[dNodeInfo.nodePtr];
 		RectangleF nodeRect(currentPos.X, currentPos.Y, nodeWidth, nodeHeight);
 
 		Brush^ currentBrush;
-		if (dNodeInfo.nodePtr->status == LinkStatus::Broken) currentBrush = nodeBrushBroken;
-		else if (dNodeInfo.nodePtr->type == LinkType::Internal) currentBrush = nodeBrushInternal;
-		else currentBrush = nodeBrushExternal;
+		Pen^ currentBorderPen;
 
-		g->FillEllipse(currentBrush, nodeRect);
+		if (dNodeInfo.nodePtr->status == LinkStatus::Broken) {
+			currentBrush = nodeBrushBroken;
+			currentBorderPen = borderPenBroken;
+		}
+		else if (dNodeInfo.nodePtr->type == LinkType::Internal) {
+			currentBrush = nodeBrushInternal;
+			currentBorderPen = borderPenInternal;
+		}
+		else {
+			currentBrush = nodeBrushExternal;
+			currentBorderPen = borderPenExternal;
+		}
 
+		// Crear la ruta de la cápsula
+		GraphicsPath^ capsulePath = gcnew GraphicsPath();
+		capsulePath->AddArc(nodeRect.X, nodeRect.Y, cornerRadius, cornerRadius, 180, 90);
+		capsulePath->AddArc(nodeRect.Right - cornerRadius, nodeRect.Y, cornerRadius, cornerRadius, 270, 90);
+		capsulePath->AddArc(nodeRect.Right - cornerRadius, nodeRect.Bottom - cornerRadius, cornerRadius, cornerRadius, 0, 90);
+		capsulePath->AddArc(nodeRect.X, nodeRect.Bottom - cornerRadius, cornerRadius, cornerRadius, 90, 90);
+		capsulePath->CloseFigure();
+
+		// Dibujar relleno y borde
+		g->FillPath(currentBrush, capsulePath);
+		g->DrawPath(currentBorderPen, capsulePath);
+
+		// Dibujar texto
 		String^ url = gcnew String(dNodeInfo.nodePtr->url.c_str());
 		String^ displayText = url;
 		try {
 			Uri^ uri = gcnew Uri(url);
-			displayText = uri->PathAndQuery;
-			if (displayText->Length > 15) {
-				displayText = "..." + displayText->Substring(displayText->Length - 12);
+			displayText = (uri->PathAndQuery->Length > 1) ? uri->PathAndQuery : uri->Host;
+			if (displayText->Length > 20) {
+				displayText = "..." + displayText->Substring(displayText->Length - 17);
 			}
 		}
 		catch (Exception^) {
-			if (displayText->Length > 18) displayText = displayText->Substring(0, 15) + "...";
+			if (displayText->Length > 23) displayText = displayText->Substring(0, 20) + "...";
 		}
 
 		StringFormat^ sf = gcnew StringFormat();
@@ -350,6 +400,7 @@ System::Void MyForm::panelArbolGrafico_Paint(System::Object^ sender, System::Win
 		g->DrawString(displayText, nodeFont, textBrush, nodeRect, sf);
 	}
 }
+
 
 System::Void MyForm::panelArbolGrafico_MouseWheel(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e) {
 	if (e->Delta > 0)
@@ -402,22 +453,62 @@ System::Void MyForm::btnNuevoAnalisis_Click(System::Object^ sender, System::Even
 		MessageBoxIcon::Question);
 
 	if (confirmResult == System::Windows::Forms::DialogResult::Yes) {
-		// 2. Limpiar el estado de la capa de negocio
-		// Esto es CRUCIAL. Debemos liberar el árbol viejo y resetear el estado.
-		// Asumiendo que `startCrawling` ya maneja la limpieza del árbol anterior, 
-		// lo cual es una buena práctica y tu código parece hacerlo.
-		// Si no, necesitaríamos un método `crawler->reset()`
-
-		// 3. Limpiar la UI de resultados
 		this->rtbAccionResultado->Clear();
 		this->lblAccionResultadoTitulo->Text = "Resultados de la Acción:";
 		this->txtPalabraClave->Text = "Ingrese palabra clave aquí...";
 		this->txtPalabraClave->ForeColor = Color::Gray;
-
-		// 4. Volver al panel de inicio
 		SwitchPanel(panelInicio);
 	}
 }
+
+// =================================================================================
+// ===           NUEVA IMPLEMENTACIÓN DEL BOTÓN DE SALIDA "PORTAL DE NEXUS"        ===
+// =================================================================================
+System::Void MyForm::panelBotonSalir_Click(System::Object^ sender, System::EventArgs^ e) {
+	this->Close(); // Cierra el formulario y la aplicación
+}
+
+System::Void MyForm::panelBotonSalir_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e) {
+	Graphics^ g = e->Graphics;
+	g->SmoothingMode = SmoothingMode::AntiAlias;
+	Panel^ panel = cli::safe_cast<Panel^>(sender);
+	System::Drawing::Rectangle rect = panel->ClientRectangle;
+
+	GraphicsPath^ portalPath = gcnew GraphicsPath();
+	portalPath->AddEllipse(rect);
+
+	// Define los colores para el estado normal y el estado hover (iluminado)
+	Color centerColor = isMouseOverExit ? Color::FromArgb(220, 200, 255) : Color::FromArgb(136, 95, 255);
+	Color outerColor = isMouseOverExit ? Color::FromArgb(136, 95, 255) : Color::FromArgb(28, 27, 45);
+
+	PathGradientBrush^ portalBrush = gcnew PathGradientBrush(portalPath);
+	portalBrush->CenterPoint = PointF(rect.Width / 2.0f, rect.Height / 2.0f);
+	portalBrush->CenterColor = centerColor;
+	array<Color>^ surroundColors = { outerColor };
+	portalBrush->SurroundColors = surroundColors;
+
+	g->FillEllipse(portalBrush, rect);
+
+	// Dibuja un ícono simple de "salida"
+	Pen^ iconPen = gcnew Pen(Color::White, 2);
+	g->DrawEllipse(iconPen, rect.X + 10, rect.Y + 10, rect.Width - 20, rect.Height - 20);
+	g->DrawLine(iconPen, rect.Width / 2, rect.Y + 6, rect.Width / 2, rect.Y + 16);
+
+	delete portalBrush;
+	delete portalPath;
+	delete iconPen;
+}
+
+System::Void MyForm::panelBotonSalir_MouseEnter(System::Object^ sender, System::EventArgs^ e) {
+	isMouseOverExit = true;
+	(cli::safe_cast<Panel^>(sender))->Invalidate(); // Vuelve a dibujar el panel
+}
+
+System::Void MyForm::panelBotonSalir_MouseLeave(System::Object^ sender, System::EventArgs^ e) {
+	isMouseOverExit = false;
+	(cli::safe_cast<Panel^>(sender))->Invalidate(); // Vuelve a dibujar el panel
+}
+
 
 #pragma region Windows Form Designer generated code
 void MyForm::InitializeComponent(void)
@@ -466,6 +557,10 @@ void MyForm::InitializeComponent(void)
 	this->panelArbolGrafico = (gcnew System::Windows::Forms::Panel());
 	this->panelBtnNuevoAnalisis = (gcnew System::Windows::Forms::Panel());
 	this->lblBtnNuevoAnalisis = (gcnew System::Windows::Forms::Label());
+	// --- INICIALIZACIÓN BOTÓN SALIR ---
+	this->panelBotonSalir = (gcnew System::Windows::Forms::Panel());
+	this->lblBotonSalir = (gcnew System::Windows::Forms::Label());
+
 	this->panelInicio->SuspendLayout();
 	this->panelInputContainer->SuspendLayout();
 	(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->numProfundidad))->BeginInit();
@@ -479,6 +574,8 @@ void MyForm::InitializeComponent(void)
 	this->panelBtnExportar->SuspendLayout();
 	this->grpAccionResultado->SuspendLayout();
 	this->panelBtnNuevoAnalisis->SuspendLayout();
+	// --- AÑADIR A SUSPENDLAYOUT ---
+	this->panelBotonSalir->SuspendLayout();
 	this->SuspendLayout();
 	// 
 	// panelInicio
@@ -528,7 +625,7 @@ void MyForm::InitializeComponent(void)
 	this->txtUrl->Name = L"txtUrl";
 	this->txtUrl->Size = System::Drawing::Size(412, 32);
 	this->txtUrl->TabIndex = 1;
-	this->txtUrl->Text = L""; 
+	this->txtUrl->Text = L"";
 	// 
 	// lblEjemploUrl
 	// 
@@ -644,6 +741,7 @@ void MyForm::InitializeComponent(void)
 	// 
 	// panelResultados
 	// 
+	this->panelResultados->Controls->Add(this->panelBotonSalir); // AÑADIDO
 	this->panelResultados->Controls->Add(this->btnVolverResumen);
 	this->panelResultados->Controls->Add(this->grpAccionResultado);
 	this->panelResultados->Controls->Add(this->grpAcciones);
@@ -657,15 +755,19 @@ void MyForm::InitializeComponent(void)
 	// 
 	// btnVolverResumen
 	// 
-	this->btnVolverResumen->BackColor = System::Drawing::Color::Firebrick;
 	this->btnVolverResumen->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left));
 	this->btnVolverResumen->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9, System::Drawing::FontStyle::Bold));
-	this->btnVolverResumen->ForeColor = System::Drawing::Color::White;
+	this->btnVolverResumen->FlatStyle = System::Windows::Forms::FlatStyle::Flat; // Estilo plano para que el color de fondo se vea bien
+	this->btnVolverResumen->FlatAppearance->BorderColor = System::Drawing::Color::White; // Borde blanco
+	this->btnVolverResumen->FlatAppearance->BorderSize = 1;
+	this->btnVolverResumen->BackColor = System::Drawing::Color::Firebrick; // Fondo rojo (Firebrick es un rojo oscuro agradable)
+	this->btnVolverResumen->ForeColor = System::Drawing::Color::White; // Letras blancas
 	this->btnVolverResumen->Location = System::Drawing::Point(20, 640);
 	this->btnVolverResumen->Name = L"btnVolverResumen";
 	this->btnVolverResumen->Size = System::Drawing::Size(180, 30);
 	this->btnVolverResumen->TabIndex = 5;
 	this->btnVolverResumen->Text = L"< Volver al Resumen";
+	this->btnVolverResumen->UseVisualStyleBackColor = false; // Importante para que el BackColor funcione
 	this->btnVolverResumen->Visible = false;
 	this->btnVolverResumen->Click += gcnew System::EventHandler(this, &MyForm::btnVolverResumen_Click);
 	// 
@@ -926,7 +1028,7 @@ void MyForm::InitializeComponent(void)
 	this->panelArbolGrafico->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom)
 		| System::Windows::Forms::AnchorStyles::Left)
 		| System::Windows::Forms::AnchorStyles::Right));
-	this->panelArbolGrafico->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(42)), static_cast<System::Int32>(static_cast<System::Byte>(41)), static_cast<System::Int32>(static_cast<System::Byte>(64)));
+	this->panelArbolGrafico->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(28)), static_cast<System::Int32>(static_cast<System::Byte>(27)), static_cast<System::Int32>(static_cast<System::Byte>(45))); // Fondo más oscuro para contraste
 	this->panelArbolGrafico->BorderStyle = System::Windows::Forms::BorderStyle::FixedSingle;
 	this->panelArbolGrafico->Location = System::Drawing::Point(20, 290);
 	this->panelArbolGrafico->Name = L"panelArbolGrafico";
@@ -963,6 +1065,20 @@ void MyForm::InitializeComponent(void)
 	this->lblBtnNuevoAnalisis->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
 	this->lblBtnNuevoAnalisis->Click += gcnew System::EventHandler(this, &MyForm::btnNuevoAnalisis_Click);
 	// 
+	// panelBotonSalir
+	//
+	this->panelBotonSalir->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
+	this->panelBotonSalir->BackColor = System::Drawing::Color::Transparent;
+	this->panelBotonSalir->Cursor = System::Windows::Forms::Cursors::Hand;
+	this->panelBotonSalir->Location = System::Drawing::Point(840, 20);
+	this->panelBotonSalir->Name = L"panelBotonSalir";
+	this->panelBotonSalir->Size = System::Drawing::Size(40, 40);
+	this->panelBotonSalir->TabIndex = 6;
+	this->panelBotonSalir->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &MyForm::panelBotonSalir_Paint);
+	this->panelBotonSalir->Click += gcnew System::EventHandler(this, &MyForm::panelBotonSalir_Click);
+	this->panelBotonSalir->MouseEnter += gcnew System::EventHandler(this, &MyForm::panelBotonSalir_MouseEnter);
+	this->panelBotonSalir->MouseLeave += gcnew System::EventHandler(this, &MyForm::panelBotonSalir_MouseLeave);
+	// 
 	// MyForm
 	// 
 	this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::None;
@@ -987,17 +1103,14 @@ void MyForm::InitializeComponent(void)
 	this->grpResumen->PerformLayout();
 	this->grpAcciones->ResumeLayout(false);
 	this->panelBtnVisualizar->ResumeLayout(false);
-	this->lblBtnVisualizar->ResumeLayout(false);
 	this->panelBtnBuscarPalabra->ResumeLayout(false);
-	this->lblBtnBuscarPalabra->ResumeLayout(false);
 	this->panelBtnDetectarRotos->ResumeLayout(false);
-	this->lblBtnDetectarRotos->ResumeLayout(false);
 	this->panelBtnExportar->ResumeLayout(false);
-	this->lblBtnExportar->ResumeLayout(false);
 	this->grpAccionResultado->ResumeLayout(false);
 	this->grpAccionResultado->PerformLayout();
 	this->panelBtnNuevoAnalisis->ResumeLayout(false);
-	this->lblBtnNuevoAnalisis->ResumeLayout(false);
+	// --- AÑADIR A RESUMELAYOUT ---
+	this->panelBotonSalir->ResumeLayout(false);
 	this->ResumeLayout(false);
 	// 
 	// crawlWorker
@@ -1016,3 +1129,4 @@ void MyForm::InitializeComponent(void)
 	this->searchWorker->RunWorkerCompleted += gcnew System::ComponentModel::RunWorkerCompletedEventHandler(this, &MyForm::searchWorker_RunWorkerCompleted);
 }
 #pragma endregion
+

@@ -87,8 +87,13 @@ namespace NexusCrawlerApp {
 		Panel^ panelArbolGrafico;
 		Button^ btnVolverResumen;
 
-		Panel^ panelBtnNuevoAnalisis; 
-		Label^ lblBtnNuevoAnalisis; 
+		Panel^ panelBtnNuevoAnalisis;
+		Label^ lblBtnNuevoAnalisis;
+
+		// --- NUEVOS CONTROLES PARA EL BOTÓN DE SALIDA ---
+		Panel^ panelBotonSalir;
+		Label^ lblBotonSalir;
+		bool isMouseOverExit; // Para el efecto hover
 
 		float zoomLevel;
 		PointF panOffset;
@@ -110,6 +115,12 @@ namespace NexusCrawlerApp {
 		System::Void btnVolverResumen_Click(System::Object^ sender, System::EventArgs^ e);
 		System::Void btnNuevoAnalisis_Click(System::Object^ sender, System::EventArgs^ e);
 
+		// --- NUEVOS MANEJADORES PARA EL BOTÓN DE SALIDA ---
+		System::Void panelBotonSalir_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e);
+		System::Void panelBotonSalir_Click(System::Object^ sender, System::EventArgs^ e);
+		System::Void panelBotonSalir_MouseEnter(System::Object^ sender, System::EventArgs^ e);
+		System::Void panelBotonSalir_MouseLeave(System::Object^ sender, System::EventArgs^ e);
+
 		System::Void crawlWorker_DoWork(System::Object^ sender, System::ComponentModel::DoWorkEventArgs^ e);
 		System::Void crawlWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e);
 		System::Void linkCheckWorker_DoWork(System::Object^ sender, System::ComponentModel::DoWorkEventArgs^ e);
@@ -127,3 +138,4 @@ namespace NexusCrawlerApp {
 		System::Void panelArbolGrafico_MouseMove(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e);
 	};
 }
+
