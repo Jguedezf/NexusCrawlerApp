@@ -7,9 +7,10 @@
 #include <queue>
 #include <map>
 
+// Adelantamos la declaración de la clase para evitar dependencias circulares
 class WebNode;
 
-// --- Structs de Datos ---
+// --- Estructuras de Datos ---
 struct AnalysisResult {
     int totalNodes = 0;
     int internalLinks = 0;
@@ -28,7 +29,7 @@ struct DrawableNodeInfo {
     float y;
 };
 
-// --- Enums ---
+// --- Enumeraciones ---
 enum class LinkType {
     Internal,
     External
@@ -49,7 +50,7 @@ public:
     int depth;
     std::vector<WebNode*> children;
 
-    // Variables para el algoritmo de dibujo
+    // Propiedades para el algoritmo de dibujo de árbol
     float x_pos = 0;
     float y_pos = 0;
     float modifier = 0;
@@ -67,10 +68,11 @@ private:
     std::unordered_set<std::string> visitedUrls;
     std::string baseDomain;
     std::string scheme;
+    // Cache para no recalcular las posiciones si el árbol no ha cambiado
     std::vector<DrawableNodeInfo> drawableTreeCache;
     bool positionsCalculated = false;
 
-    // Métodos existentes
+    // Métodos privados de crawling
     void crawl(WebNode* currentNode, int maxDepth);
     std::string downloadHtml(const std::string& url, long* http_code);
     void extractLinks(WebNode* node);
@@ -79,8 +81,8 @@ private:
     void countNodesRecursive(WebNode* node, AnalysisResult& result);
     void collectNodesToCheck(WebNode* node, std::vector<WebNode*>& nodesToCheck);
 
-    // Métodos para el algoritmo de dibujo
-    void firstWalk(WebNode* node, std::map<int, float>& next_x_at_level);
+    // Métodos privados para calcular la posición de los nodos para el dibujo
+    void firstWalk(WebNode* node);
     void secondWalk(WebNode* node, float modifier);
     void calculateNodePositions();
     void populateDrawableTree(WebNode* node, std::vector<DrawableNodeInfo>& tree);
@@ -90,10 +92,11 @@ public:
     ~NavigationTree();
 
     void startCrawling(const std::string& startUrl, int maxDepth);
-    WebNode* getRoot();
+    WebNode* getRoot() const;
     AnalysisResult getAnalysisResult();
     std::vector<std::string> checkAllLinksStatus();
     PathResult findShortestPathToKeyword(const std::string& keyword);
-    const std::vector<DrawableNodeInfo>& getDrawableTree();
-};
+    const std::vector<DrawableNodeInfo>& getDrawableTree() const;
 
+    // << CORRECCIÓN AQUÍ: Se eliminó la declaración de DrawConnections >>
+};

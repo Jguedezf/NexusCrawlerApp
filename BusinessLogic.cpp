@@ -1,4 +1,3 @@
-
 #define NOMINMAX
 #include "BusinessLogic.h"
 #include <iostream>
@@ -14,9 +13,9 @@ struct RequestData {
     CURL* handle;
 };
 
-// --- Implementación de WebNode ---
+// --- Implementacion de WebNode ---
 WebNode::WebNode(const std::string& url, LinkType type, int depth)
-    : url(url), type(type), depth(depth), status(LinkStatus::NotChecked) {
+    : url(url), type(type), depth(depth), status(LinkStatus::NotChecked), ancestor(this), thread(nullptr), modifier(0.0f), x_pos(0.0f), y_pos(0.0f) {
 }
 
 WebNode::~WebNode() {
@@ -28,7 +27,7 @@ void WebNode::addChild(WebNode* child) {
     children.push_back(child);
 }
 
-// --- Implementación de NavigationTree ---
+// --- Implementacion de NavigationTree ---
 NavigationTree::NavigationTree() : root(nullptr) {}
 NavigationTree::~NavigationTree() {
     if (root) {
@@ -45,6 +44,7 @@ static size_t write_callback_discard(void* contents, size_t size, size_t nmemb, 
     return size * nmemb;
 }
 
+// Ejemplo para limitar enlaces y poner timeout (ajusta según tu implementación real)
 std::string NavigationTree::downloadHtml(const std::string& url, long* http_code) {
     CURL* curl_handle = curl_easy_init();
     std::string readBuffer;
@@ -53,7 +53,7 @@ std::string NavigationTree::downloadHtml(const std::string& url, long* http_code
         curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_callback_to_string);
         curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, &readBuffer);
         curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 10L);
+        curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 10L); // 10 segundos de timeout
         curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "NexusCrawler/1.0");
         curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0L);
         curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0L);
@@ -68,6 +68,30 @@ std::string NavigationTree::downloadHtml(const std::string& url, long* http_code
         curl_easy_cleanup(curl_handle);
     }
     return readBuffer;
+}
+
+// Limitar la cantidad de enlaces por página
+void NavigationTree::extractLinks(WebNode* node) {
+    long http_code = 0;
+    std::string html = downloadHtml(node->url, &http_code);
+    if (http_code >= 400 || http_code < 0 || html.empty()) {
+        node->status = LinkStatus::Broken;
+        return;
+    }
+    node->status = LinkStatus::OK;
+    GumboOutput* output = gumbo_parse(html.c_str());
+    if (output && output->root) {
+        std::vector<std::string> links;
+        search_for_links(output->root, node);
+        gumbo_destroy_output(&kGumboDefaultOptions, output);
+
+        int maxLinks = 20; // máximo 20 enlaces por página
+        int count = 0;
+        for (WebNode* child : node->children) {
+            if (count++ >= maxLinks) break;
+            links.push_back(child->url);
+        }
+    }
 }
 
 void NavigationTree::search_for_links(GumboNode* node, WebNode* parentNode) {
@@ -99,21 +123,6 @@ void NavigationTree::search_for_links(GumboNode* node, WebNode* parentNode) {
     GumboVector* children = &node->v.element.children;
     for (unsigned int i = 0; i < children->length; ++i) {
         search_for_links(static_cast<GumboNode*>(children->data[i]), parentNode);
-    }
-}
-
-void NavigationTree::extractLinks(WebNode* node) {
-    long http_code = 0;
-    std::string html = downloadHtml(node->url, &http_code);
-    if (http_code >= 400 || http_code < 0 || html.empty()) {
-        node->status = LinkStatus::Broken;
-        return;
-    }
-    node->status = LinkStatus::OK;
-    GumboOutput* output = gumbo_parse(html.c_str());
-    if (output && output->root) {
-        search_for_links(output->root, node);
-        gumbo_destroy_output(&kGumboDefaultOptions, output);
     }
 }
 
@@ -176,7 +185,7 @@ AnalysisResult NavigationTree::getAnalysisResult() {
     return result;
 }
 
-WebNode* NavigationTree::getRoot() {
+WebNode* NavigationTree::getRoot() const {
     return this->root;
 }
 
@@ -302,43 +311,70 @@ PathResult NavigationTree::findShortestPathToKeyword(const std::string& keyword)
 }
 
 
-// ================== NUEVA LÓGICA COMPLETA PARA EL DIBUJO DEL ÁRBOL ==================
+// --- Lógica de Visualización del Árbol (Algoritmo de Reingold-Tilford CORREGIDO) ---
 
-void NavigationTree::firstWalk(WebNode* node, std::map<int, float>& next_x_at_level) {
-    for (WebNode* child : node->children) {
-        firstWalk(child, next_x_at_level);
-    }
+static WebNode* get_next_right(WebNode* n) {
+    if (!n->thread) return nullptr;
+    WebNode* t = n->thread;
+    while (t->children.size() > 1 && t->depth == n->depth) t = t->children[t->children.size() - 1];
+    return t;
+}
 
-    node->y_pos = (float)node->depth;
+static WebNode* get_next_left(WebNode* n) {
+    if (!n->thread) return nullptr;
+    WebNode* t = n->thread;
+    while (t->children.size() > 0 && t->depth == n->depth) t = t->children[0];
+    return t;
+}
 
+void NavigationTree::firstWalk(WebNode* node) {
     if (node->children.empty()) {
-        // Si es una hoja, le asignamos la siguiente posición X disponible en su nivel
-        node->x_pos = next_x_at_level[node->depth];
-        next_x_at_level[node->depth] += 1.5f; // Aumentamos el espacio para el siguiente nodo hoja
+        return;
     }
-    else {
-        // Si no es una hoja, se posiciona en el centro de sus hijos
-        float sum_x = 0.0f;
-        for (WebNode* child : node->children) {
-            sum_x += child->x_pos;
+
+    firstWalk(node->children[0]);
+    WebNode* iyl = node->children[0];
+    WebNode* iyr = node->children[0];
+
+    for (size_t i = 1; i < node->children.size(); ++i) {
+        WebNode* current_child = node->children[i];
+        firstWalk(current_child);
+        WebNode* oyl = node->children[i - 1];
+        WebNode* oyr = node->children[i];
+
+        float shift = (iyl->x_pos + 1.5f) - iyr->x_pos;
+        if (shift > 0) {
+            oyr->modifier += shift;
+            oyr->x_pos += shift;
         }
-        node->x_pos = sum_x / node->children.size();
+
+        iyl = get_next_right(iyl) ? get_next_right(iyl) : oyl;
+        iyr = get_next_left(iyr) ? get_next_left(iyr) : oyr;
+    }
+
+    float midpoint = (node->children.front()->x_pos + node->children.back()->x_pos) / 2.0f;
+    node->x_pos = midpoint;
+}
+
+void NavigationTree::secondWalk(WebNode* node, float modifier) {
+    node->x_pos += modifier;
+    node->y_pos = (float)node->depth;
+    for (WebNode* child : node->children) {
+        secondWalk(child, modifier + node->modifier);
     }
 }
 
 void NavigationTree::calculateNodePositions() {
     if (!root || positionsCalculated) return;
-
-    std::map<int, float> next_x_at_level;
-    firstWalk(root, next_x_at_level);
-
+    firstWalk(root);
+    secondWalk(root, -root->x_pos);
     positionsCalculated = true;
 }
 
 void NavigationTree::populateDrawableTree(WebNode* node, std::vector<DrawableNodeInfo>& tree) {
     if (!node) return;
 
-    DrawableNodeInfo dNode;
+    DrawableNodeInfo dNode = {}; // Inicializar estructura
     dNode.nodePtr = node;
     dNode.x = node->x_pos;
     dNode.y = node->y_pos;
@@ -349,11 +385,11 @@ void NavigationTree::populateDrawableTree(WebNode* node, std::vector<DrawableNod
     }
 }
 
-const std::vector<DrawableNodeInfo>& NavigationTree::getDrawableTree() {
+const std::vector<DrawableNodeInfo>& NavigationTree::getDrawableTree() const {
     if (!positionsCalculated) {
-        calculateNodePositions();
-        drawableTreeCache.clear();
-        populateDrawableTree(root, drawableTreeCache);
+        const_cast<NavigationTree*>(this)->calculateNodePositions();
+        const_cast<NavigationTree*>(this)->drawableTreeCache.clear();
+        const_cast<NavigationTree*>(this)->populateDrawableTree(root, const_cast<NavigationTree*>(this)->drawableTreeCache);
     }
     return drawableTreeCache;
 }

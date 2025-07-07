@@ -5,6 +5,7 @@
 #include <msclr/marshal_cppstd.h>
 #include <vector>
 
+// Forward declarations para tipos nativos
 class NavigationTree;
 struct AnalysisResult;
 struct PathResult;
@@ -28,6 +29,8 @@ namespace NexusCrawlerApp {
 	public ref struct SearchArgs {
 		String^ Keyword;
 	};
+
+
 
 	public ref struct PathResultManaged {
 		bool found;
@@ -90,10 +93,9 @@ namespace NexusCrawlerApp {
 		Panel^ panelBtnNuevoAnalisis;
 		Label^ lblBtnNuevoAnalisis;
 
-		// --- NUEVOS CONTROLES PARA EL BOTÓN DE SALIDA ---
 		Panel^ panelBotonSalir;
 		Label^ lblBotonSalir;
-		bool isMouseOverExit; // Para el efecto hover
+		bool isMouseOverExit;
 
 		float zoomLevel;
 		PointF panOffset;
@@ -115,7 +117,6 @@ namespace NexusCrawlerApp {
 		System::Void btnVolverResumen_Click(System::Object^ sender, System::EventArgs^ e);
 		System::Void btnNuevoAnalisis_Click(System::Object^ sender, System::EventArgs^ e);
 
-		// --- NUEVOS MANEJADORES PARA EL BOTÓN DE SALIDA ---
 		System::Void panelBotonSalir_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e);
 		System::Void panelBotonSalir_Click(System::Object^ sender, System::EventArgs^ e);
 		System::Void panelBotonSalir_MouseEnter(System::Object^ sender, System::EventArgs^ e);
@@ -136,6 +137,8 @@ namespace NexusCrawlerApp {
 		System::Void panelArbolGrafico_MouseWheel(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e);
 		System::Void panelArbolGrafico_MouseDown(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e);
 		System::Void panelArbolGrafico_MouseMove(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e);
+		System::Void btnVisualizarArbolCompleto_Click(System::Object^ sender, System::EventArgs^ e);
+
+		// << CORRECCIÓN AQUÍ: Se eliminó la línea de código sobrante >>
 	};
 }
-
