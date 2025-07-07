@@ -7,7 +7,8 @@
 
 class DataAccess {
 public:
-    static bool exportTreeToFile(WebNode* root, const std::string& filePath);
+    static bool exportTreeToHtml(WebNode* root, const std::string& filePath, const std::string& analysisUrl, int requestedDepth);
 private:
-    static void writeNodeToFile(std::ofstream& file, WebNode* node, int indentLevel);
+    // <<--- CORRECCIÓN: Dejada la versión más simple y correcta con un solo parámetro ---
+    static void writeNodeToHtml(std::ofstream& file, WebNode* node);
 };

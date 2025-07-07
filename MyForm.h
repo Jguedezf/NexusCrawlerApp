@@ -9,7 +9,6 @@
 class NavigationTree;
 struct AnalysisResult;
 struct PathResult;
-struct DrawableNodeInfo;
 
 namespace NexusCrawlerApp {
 
@@ -29,8 +28,6 @@ namespace NexusCrawlerApp {
 	public ref struct SearchArgs {
 		String^ Keyword;
 	};
-
-
 
 	public ref struct PathResultManaged {
 		bool found;
@@ -81,25 +78,15 @@ namespace NexusCrawlerApp {
 		Label^ lblBtnBuscarPalabra;
 		Panel^ panelBtnExportar;
 		Label^ lblBtnExportar;
-		Panel^ panelBtnVisualizar;
-		Label^ lblBtnVisualizar;
 		GroupBox^ grpAccionResultado;
 		TextBox^ txtPalabraClave;
 		Label^ lblAccionResultadoTitulo;
 		RichTextBox^ rtbAccionResultado;
-		Panel^ panelArbolGrafico;
-		Button^ btnVolverResumen;
-
 		Panel^ panelBtnNuevoAnalisis;
 		Label^ lblBtnNuevoAnalisis;
-
 		Panel^ panelBotonSalir;
 		Label^ lblBotonSalir;
 		bool isMouseOverExit;
-
-		float zoomLevel;
-		PointF panOffset;
-		Point lastMousePos;
 
 #pragma region Windows Form Designer generated code
 		void InitializeComponent(void);
@@ -113,8 +100,6 @@ namespace NexusCrawlerApp {
 		System::Void btnDetectarRotos_Click(System::Object^ sender, System::EventArgs^ e);
 		System::Void btnBuscarPalabra_Click(System::Object^ sender, System::EventArgs^ e);
 		System::Void panelAccion_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e);
-		System::Void btnVisualizarArbol_Click(System::Object^ sender, System::EventArgs^ e);
-		System::Void btnVolverResumen_Click(System::Object^ sender, System::EventArgs^ e);
 		System::Void btnNuevoAnalisis_Click(System::Object^ sender, System::EventArgs^ e);
 
 		System::Void panelBotonSalir_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e);
@@ -132,13 +117,5 @@ namespace NexusCrawlerApp {
 		System::Void rtbAccionResultado_LinkClicked(System::Object^ sender, System::Windows::Forms::LinkClickedEventArgs^ e);
 		System::Void txtPalabraClave_Enter(System::Object^ sender, System::EventArgs^ e);
 		System::Void txtPalabraClave_Leave(System::Object^ sender, System::EventArgs^ e);
-
-		System::Void panelArbolGrafico_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e);
-		System::Void panelArbolGrafico_MouseWheel(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e);
-		System::Void panelArbolGrafico_MouseDown(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e);
-		System::Void panelArbolGrafico_MouseMove(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e);
-		System::Void btnVisualizarArbolCompleto_Click(System::Object^ sender, System::EventArgs^ e);
-
-		// << CORRECCIÓN AQUÍ: Se eliminó la línea de código sobrante >>
 	};
 }

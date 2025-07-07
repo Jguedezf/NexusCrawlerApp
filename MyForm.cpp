@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <ctime>
 
 using namespace NexusCrawlerApp;
 
@@ -11,13 +12,13 @@ MyForm::MyForm(void)
 {
 	InitializeComponent();
 	crawler = new NavigationTree();
-	this->zoomLevel = 1.0f;
-	this->panOffset = PointF(50, 50);
 	this->isMouseOverExit = false;
-	this->panelCarga->Visible = false;
-	this->panelResultados->Visible = false;
-	this->panelInicio->Visible = true;
-	this->panelInicio->BringToFront();
+
+	System::Drawing::Drawing2D::GraphicsPath^ path = gcnew System::Drawing::Drawing2D::GraphicsPath();
+	path->AddEllipse(0, 0, this->panelBotonSalir->Width, this->panelBotonSalir->Height);
+	this->panelBotonSalir->Region = gcnew System::Drawing::Region(path);
+
+	SwitchPanel(panelInicio);
 }
 
 MyForm::~MyForm()
@@ -33,7 +34,7 @@ MyForm::~MyForm()
 
 System::Void MyForm::btnIniciarAnalisis_Click(System::Object^ sender, System::EventArgs^ e) {
 	if (String::IsNullOrWhiteSpace(this->txtUrl->Text)) {
-		MessageBox::Show("Por favor, ingrese una URL.", "Error");
+		MessageBox::Show(L"Por favor, ingrese una URL.", L"Error");
 		return;
 	}
 	if (this->crawlWorker->IsBusy) return;
@@ -41,16 +42,6 @@ System::Void MyForm::btnIniciarAnalisis_Click(System::Object^ sender, System::Ev
 	CrawlArgs^ args = gcnew CrawlArgs();
 	args->Url = this->txtUrl->Text;
 	args->Depth = static_cast<int>(this->numProfundidad->Value);
-	this->crawlWorker->RunWorkerAsync(args);
-}
-
-System::Void MyForm::btnVisualizarArbolCompleto_Click(System::Object^ sender, System::EventArgs^ e) {
-	if (String::IsNullOrWhiteSpace(this->txtUrl->Text)) return;
-	if (this->crawlWorker->IsBusy) return;
-	SwitchPanel(panelCarga);
-	CrawlArgs^ args = gcnew CrawlArgs();
-	args->Url = this->txtUrl->Text;
-	args->Depth = 10; // Profundidad máxima para árbol completo
 	this->crawlWorker->RunWorkerAsync(args);
 }
 
@@ -63,67 +54,93 @@ System::Void MyForm::crawlWorker_DoWork(System::Object^ sender, System::Componen
 
 System::Void MyForm::crawlWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e) {
 	if (e->Error != nullptr) {
-		MessageBox::Show("Ocurrió un error durante el análisis: " + e->Error->Message, "Error");
+		MessageBox::Show(L"Ocurrió un error durante el análisis: " + e->Error->Message, L"Error");
 		SwitchPanel(panelInicio);
 	}
 	else {
 		AnalysisResult result = crawler->getAnalysisResult();
 		this->lblUrlAnalizada->Text = "URL Raíz Analizada: " + this->txtUrl->Text;
-		this->lblProfundidadSolicitada->Text = "Profundidad de Análisis Solicitada: " + this->numProfundidad->Value.ToString();
-		this->lblTotalNodos->Text = "Total de Nodos/Páginas Descubiertas: " + result.totalNodes;
-		this->lblEnlacesInternos->Text = "Enlaces Internos Encontrados: " + result.internalLinks;
-		this->lblEnlacesExternos->Text = "Enlaces Externos Encontrados: " + result.externalLinks;
-		this->lblProfundidadReal->Text = "Profundidad Máxima Real del Árbol: " + result.maxDepth;
+		this->lblProfundidadSolicitada->Text = L"Profundidad de Análisis Solicitada: " + this->numProfundidad->Value.ToString();
+		this->lblTotalNodos->Text = L"Total de Nodos/Páginas Descubiertas: " + result.totalNodes;
+		this->lblEnlacesInternos->Text = L"Enlaces Internos Encontrados: " + result.internalLinks;
+		this->lblEnlacesExternos->Text = L"Enlaces Externos Encontrados: " + result.externalLinks;
+		this->lblProfundidadReal->Text = L"Profundidad Máxima Real del Árbol: " + result.maxDepth;
 		SwitchPanel(panelResultados);
 	}
 }
 
 System::Void MyForm::btnExportar_Click(System::Object^ sender, System::EventArgs^ e) {
 	if (crawler->getRoot() == nullptr) {
-		MessageBox::Show("Primero debe realizar un análisis.", "Árbol no disponible", MessageBoxButtons::OK, MessageBoxIcon::Information);
+		MessageBox::Show(L"Primero debe realizar un análisis.", L"Árbol no disponible", MessageBoxButtons::OK, MessageBoxIcon::Information);
 		return;
 	}
+
 	SaveFileDialog^ saveFileDialog = gcnew SaveFileDialog();
-	saveFileDialog->Filter = "Archivos de Texto (*.txt)|*.txt|Todos los archivos (*.*)|*.*";
-	saveFileDialog->Title = "Exportar Árbol de Navegación";
-	saveFileDialog->FileName = "analisis_arbol.txt";
+	saveFileDialog->Filter = "Archivo HTML (*.html)|*.html|Todos los archivos (*.*)|*.*";
+	saveFileDialog->Title = L"Exportar Árbol de Navegación como HTML";
+
+	try {
+		Uri^ uri = gcnew Uri(this->txtUrl->Text);
+		String^ host = uri->Host->Replace("www.", "");
+		saveFileDialog->FileName = "Reporte_NexusCrawler_" + host + ".html";
+	}
+	catch (Exception^) {
+		saveFileDialog->FileName = "Reporte_NexusCrawler.html";
+	}
+
 	if (saveFileDialog->ShowDialog() == System::Windows::Forms::DialogResult::OK) {
 		msclr::interop::marshal_context context;
 		std::string filePath = context.marshal_as<std::string>(saveFileDialog->FileName);
-		if (DataAccess::exportTreeToFile(crawler->getRoot(), filePath)) {
-			MessageBox::Show("El árbol se ha exportado exitosamente.", "Exportación Exitosa", MessageBoxButtons::OK, MessageBoxIcon::Information);
+		std::string analysisUrl = context.marshal_as<std::string>(this->txtUrl->Text);
+		int requestedDepth = static_cast<int>(this->numProfundidad->Value);
+
+		if (DataAccess::exportTreeToHtml(crawler->getRoot(), filePath, analysisUrl, requestedDepth)) {
+			System::Windows::Forms::DialogResult openResult = MessageBox::Show(
+				L"El árbol se ha exportado exitosamente como HTML.\n\n¿Desea abrir el archivo ahora?",
+				L"Exportación Exitosa",
+				MessageBoxButtons::YesNo,
+				MessageBoxIcon::Information);
+
+			if (openResult == System::Windows::Forms::DialogResult::Yes) {
+				try {
+					System::Diagnostics::Process::Start(saveFileDialog->FileName);
+				}
+				catch (Exception^ ex) {
+					MessageBox::Show(L"No se pudo abrir el archivo: " + ex->Message, L"Error al abrir");
+				}
+			}
 		}
 		else {
-			MessageBox::Show("Ocurrió un error al guardar el archivo.", "Error de Exportación", MessageBoxButtons::OK, MessageBoxIcon::Error);
+			MessageBox::Show(L"Ocurrió un error al guardar el archivo.", L"Error de Exportación", MessageBoxButtons::OK, MessageBoxIcon::Error);
 		}
 	}
 }
 
 System::Void MyForm::btnDetectarRotos_Click(System::Object^ sender, System::EventArgs^ e) {
 	if (crawler->getRoot() == nullptr) {
-		MessageBox::Show("Primero debe realizar un análisis.", "Árbol no disponible", MessageBoxButtons::OK, MessageBoxIcon::Information);
+		MessageBox::Show(L"Primero debe realizar un análisis.", L"Árbol no disponible", MessageBoxButtons::OK, MessageBoxIcon::Information);
 		return;
 	}
 	if (linkCheckWorker->IsBusy) return;
 	this->grpAcciones->Enabled = false;
-	this->lblAccionResultadoTitulo->Text = "Verificando enlaces...";
-	this->rtbAccionResultado->Text = "Por favor espere...";
+	this->lblAccionResultadoTitulo->Text = L"Verificando enlaces...";
+	this->rtbAccionResultado->Text = L"Por favor espere...";
 	linkCheckWorker->RunWorkerAsync();
 }
 
 System::Void MyForm::btnBuscarPalabra_Click(System::Object^ sender, System::EventArgs^ e) {
 	if (crawler->getRoot() == nullptr) {
-		MessageBox::Show("Primero debe realizar un análisis.", "Árbol no disponible", MessageBoxButtons::OK, MessageBoxIcon::Information);
+		MessageBox::Show(L"Primero debe realizar un análisis.", L"Árbol no disponible", MessageBoxButtons::OK, MessageBoxIcon::Information);
 		return;
 	}
-	if (String::IsNullOrWhiteSpace(txtPalabraClave->Text) || txtPalabraClave->Text == "Ingrese palabra clave aquí...") {
-		MessageBox::Show("Por favor, ingrese una palabra clave para buscar.", "Entrada Inválida", MessageBoxButtons::OK, MessageBoxIcon::Warning);
+	if (String::IsNullOrWhiteSpace(txtPalabraClave->Text) || txtPalabraClave->Text == L"Ingrese palabra clave aquí...") {
+		MessageBox::Show(L"Por favor, ingrese una palabra clave para buscar.", L"Entrada Inválida", MessageBoxButtons::OK, MessageBoxIcon::Warning);
 		return;
 	}
 	if (searchWorker->IsBusy) return;
 	this->grpAcciones->Enabled = false;
-	this->lblAccionResultadoTitulo->Text = "Buscando palabra clave...";
-	this->rtbAccionResultado->Text = "Por favor espere...";
+	this->lblAccionResultadoTitulo->Text = L"Buscando palabra clave...";
+	this->rtbAccionResultado->Text = L"Por favor espere...";
 	SearchArgs^ args = gcnew SearchArgs();
 	args->Keyword = this->txtPalabraClave->Text;
 	searchWorker->RunWorkerAsync(args);
@@ -141,18 +158,18 @@ System::Void MyForm::linkCheckWorker_DoWork(System::Object^ sender, System::Comp
 System::Void MyForm::linkCheckWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e) {
 	this->grpAcciones->Enabled = true;
 	if (e->Error != nullptr) {
-		this->lblAccionResultadoTitulo->Text = "Error en la Verificación";
-		this->rtbAccionResultado->Text = "Ocurrió un error al verificar los enlaces.";
+		this->lblAccionResultadoTitulo->Text = L"Error en la Verificación";
+		this->rtbAccionResultado->Text = L"Ocurrió un error al verificar los enlaces.";
 		return;
 	}
 	List<String^>^ brokenLinks = safe_cast<List<String^>^>(e->Result);
-	this->lblAccionResultadoTitulo->Text = "Resultados de 'Enlaces Rotos':";
+	this->lblAccionResultadoTitulo->Text = L"Resultados de 'Enlaces Rotos':";
 	this->rtbAccionResultado->Clear();
 	if (brokenLinks->Count == 0) {
 		this->rtbAccionResultado->SelectionColor = Color::LightGreen;
 		this->rtbAccionResultado->AppendText("[OK] ");
 		this->rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
-		this->rtbAccionResultado->AppendText("¡Felicidades! No se encontraron enlaces rotos.");
+		this->rtbAccionResultado->AppendText(L"¡Felicidades! No se encontraron enlaces rotos.");
 	}
 	else {
 		this->rtbAccionResultado->AppendText("Se encontraron " + brokenLinks->Count + " enlaces rotos:\r\n\r\n");
@@ -184,8 +201,8 @@ System::Void MyForm::searchWorker_DoWork(System::Object^ sender, System::Compone
 System::Void MyForm::searchWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e) {
 	this->grpAcciones->Enabled = true;
 	if (e->Error != nullptr) {
-		this->lblAccionResultadoTitulo->Text = "Error en la Búsqueda";
-		this->rtbAccionResultado->Text = "Ocurrió un error durante la búsqueda.";
+		this->lblAccionResultadoTitulo->Text = L"Error en la Búsqueda";
+		this->rtbAccionResultado->Text = L"Ocurrió un error durante la búsqueda.";
 		return;
 	}
 	PathResultManaged^ result = safe_cast<PathResultManaged^>(e->Result);
@@ -195,15 +212,15 @@ System::Void MyForm::searchWorker_RunWorkerCompleted(System::Object^ sender, Sys
 		this->rtbAccionResultado->SelectionColor = Color::Orange;
 		this->rtbAccionResultado->AppendText("[NO ENCONTRADO] ");
 		this->rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
-		this->rtbAccionResultado->AppendText("La palabra clave no se encontró en ninguna URL del árbol.");
+		this->rtbAccionResultado->AppendText(L"La palabra clave no se encontró en ninguna URL del árbol.");
 	}
 	else {
 		int clicks = result->path->Count - 1;
 		this->rtbAccionResultado->SelectionColor = Color::LightGreen;
-		this->rtbAccionResultado->AppendText("[ÉXITO] ");
+		this->rtbAccionResultado->AppendText(L"[ÉXITO] ");
 		this->rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
 		this->rtbAccionResultado->AppendText("Encontrado en " + clicks + " clic(s).\r\n\r\n");
-		this->rtbAccionResultado->AppendText("Ruta más corta:\r\n");
+		this->rtbAccionResultado->AppendText(L"Ruta más corta:\r\n");
 		for (int i = 0; i < result->path->Count; ++i) {
 			rtbAccionResultado->AppendText((gcnew String(L' ', i * 2)) + "-> " + result->path[i] + "\r\n");
 		}
@@ -215,12 +232,12 @@ System::Void MyForm::rtbAccionResultado_LinkClicked(System::Object^ sender, Syst
 		System::Diagnostics::Process::Start(e->LinkText);
 	}
 	catch (Exception^ ex) {
-		MessageBox::Show("No se pudo abrir el enlace: " + ex->Message, "Error");
+		MessageBox::Show(L"No se pudo abrir el enlace: " + ex->Message, L"Error");
 	}
 }
 
 System::Void MyForm::txtPalabraClave_Enter(System::Object^ sender, System::EventArgs^ e) {
-	if (this->txtPalabraClave->Text == "Ingrese palabra clave aquí...") {
+	if (this->txtPalabraClave->Text == L"Ingrese palabra clave aquí...") {
 		this->txtPalabraClave->Text = "";
 		this->txtPalabraClave->ForeColor = Color::White;
 	}
@@ -228,37 +245,9 @@ System::Void MyForm::txtPalabraClave_Enter(System::Object^ sender, System::Event
 
 System::Void MyForm::txtPalabraClave_Leave(System::Object^ sender, System::EventArgs^ e) {
 	if (String::IsNullOrWhiteSpace(this->txtPalabraClave->Text)) {
-		this->txtPalabraClave->Text = "Ingrese palabra clave aquí...";
+		this->txtPalabraClave->Text = L"Ingrese palabra clave aquí...";
 		this->txtPalabraClave->ForeColor = Color::Gray;
 	}
-}
-
-System::Void MyForm::btnVisualizarArbol_Click(System::Object^ sender, System::EventArgs^ e) {
-	this->grpResumen->Visible = false;
-	this->grpAcciones->Visible = false;
-	this->grpAccionResultado->Visible = false;
-	this->panelArbolGrafico->Visible = true;
-	this->btnVolverResumen->Visible = true;
-	this->panelArbolGrafico->BringToFront();
-	this->btnVolverResumen->BringToFront();
-	this->panelArbolGrafico->Invalidate();
-
-	// Mostrar botón salir en el visualizador de árbol
-	this->panelBotonSalir->Parent = this->panelResultados;
-	this->panelBotonSalir->Location = System::Drawing::Point(
-		this->panelResultados->Width - this->panelBotonSalir->Width - 20,
-		20
-	);
-	this->panelBotonSalir->Visible = true;
-}
-
-System::Void MyForm::btnVolverResumen_Click(System::Object^ sender, System::EventArgs^ e) {
-	this->grpResumen->Visible = true;
-	this->grpAcciones->Visible = true;
-	this->grpAccionResultado->Visible = true;
-	this->panelArbolGrafico->Visible = false;
-	this->btnVolverResumen->Visible = false;
-	this->panelBotonSalir->Visible = false;
 }
 
 void MyForm::SwitchPanel(Panel^ panelToShow) {
@@ -268,17 +257,12 @@ void MyForm::SwitchPanel(Panel^ panelToShow) {
 	panelToShow->Visible = true;
 	panelToShow->BringToFront();
 
-	// Control de visibilidad y posición del botón salir
-	if (panelToShow == panelInicio) {
-		this->panelBotonSalir->Parent = this->panelInicio;
-		this->panelBotonSalir->Location = System::Drawing::Point(
-			(this->panelInicio->Width - this->panelBotonSalir->Width) / 2,
-			this->panelInicio->Height - this->panelBotonSalir->Height - 30
-		);
+	if (panelToShow == panelInicio || panelToShow == panelResultados) {
+		this->panelBotonSalir->Parent = panelToShow;
 		this->panelBotonSalir->Visible = true;
+		this->panelBotonSalir->BringToFront();
 	}
-	else if (panelToShow == panelResultados) {
-		this->panelBotonSalir->Parent = this->panelResultados;
+	else {
 		this->panelBotonSalir->Visible = false;
 	}
 }
@@ -289,158 +273,6 @@ System::Void MyForm::panelBotonAnalisis_Paint(System::Object^ sender, System::Wi
 	LinearGradientBrush^ brush = gcnew LinearGradientBrush(rect, Color::FromArgb(136, 95, 255), Color::FromArgb(95, 175, 255), LinearGradientMode::Horizontal);
 	g->FillRectangle(brush, rect);
 	delete brush;
-}
-
-// --- Funcion Auxiliar Recursiva para Dibujar Conexiones ---
-void DrawConnections(Graphics^ g, Pen^ linePen, WebNode* parent, std::map<WebNode*, PointF>& positions, float nodeWidth, float nodeHeight, float y_spacing) {
-	if (!parent || positions.find(parent) == positions.end()) return;
-
-	PointF parentPos = positions[parent];
-
-	for (WebNode* child : parent->children) {
-		if (positions.find(child) != positions.end()) {
-			PointF childPos = positions[child];
-			float parentCenterX = parentPos.X + nodeWidth / 2;
-			float childCenterX = childPos.X + nodeWidth / 2;
-
-			PointF p1 = PointF(parentCenterX, parentPos.Y + nodeHeight);
-			PointF p2 = PointF(parentCenterX, parentPos.Y + nodeHeight + (y_spacing / 2));
-			PointF p3 = PointF(childCenterX, parentPos.Y + nodeHeight + (y_spacing / 2));
-			PointF p4 = PointF(childCenterX, childPos.Y);
-
-			g->DrawLine(linePen, p1, p2);
-			g->DrawLine(linePen, p2, p3);
-			g->DrawLine(linePen, p3, p4);
-
-			DrawConnections(g, linePen, child, positions, nodeWidth, nodeHeight, y_spacing);
-		}
-	}
-}
-
-
-// --- DIBUJO DEL ARBOL CORREGIDO ---
-System::Void MyForm::panelArbolGrafico_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e) {
-	Graphics^ g = e->Graphics;
-	g->SmoothingMode = SmoothingMode::AntiAlias;
-	g->Clear(panelArbolGrafico->BackColor);
-
-	WebNode* root = crawler->getRoot();
-	if (root == nullptr) {
-		String^ texto = "No hay árbol para mostrar. Realice un análisis primero.";
-		System::Drawing::Font^ font = gcnew System::Drawing::Font("Segoe UI", 12, FontStyle::Italic);
-		Brush^ brush = gcnew SolidBrush(Color::Gray);
-		StringFormat^ sf = gcnew StringFormat();
-		sf->Alignment = StringAlignment::Center;
-		sf->LineAlignment = StringAlignment::Center;
-		g->DrawString(texto, font, brush, panelArbolGrafico->ClientRectangle, sf);
-		return;
-	}
-
-	const std::vector<DrawableNodeInfo>& drawableTree = crawler->getDrawableTree();
-	if (drawableTree.empty()) return;
-
-	g->TranslateTransform(panOffset.X, panOffset.Y);
-	g->ScaleTransform(zoomLevel, zoomLevel);
-
-	Pen^ linePen = gcnew Pen(Color::FromArgb(150, 100, 200, 255), 2.0f);
-	linePen->LineJoin = LineJoin::Round;
-
-	Brush^ nodeBrushInternal = gcnew SolidBrush(Color::FromArgb(42, 41, 64));
-	Brush^ nodeBrushExternal = gcnew SolidBrush(Color::FromArgb(60, 60, 80));
-	Brush^ nodeBrushBroken = gcnew SolidBrush(Color::FromArgb(80, 40, 40));
-
-	Pen^ borderPenInternal = gcnew Pen(Color::FromArgb(95, 175, 255), 2.5f);
-	Pen^ borderPenExternal = gcnew Pen(Color::FromArgb(100, 100, 120), 2.5f);
-	Pen^ borderPenBroken = gcnew Pen(Color::Tomato, 2.5f);
-
-	Brush^ textBrush = gcnew SolidBrush(Color::WhiteSmoke);
-	System::Drawing::Font^ nodeFont = gcnew System::Drawing::Font("Segoe UI", 8, FontStyle::Bold);
-	float nodeWidth = 150.0f;
-	float nodeHeight = 40.0f;
-	float cornerRadius = 20.0f;
-	float x_spacing = 180.0f;
-	float y_spacing = 80.0f;
-
-	std::map<WebNode*, PointF> positions;
-	for (const auto& dNodeInfo : drawableTree) {
-		positions[dNodeInfo.nodePtr] = PointF(dNodeInfo.x * x_spacing, dNodeInfo.y * y_spacing);
-	}
-
-	DrawConnections(g, linePen, root, positions, nodeWidth, nodeHeight, y_spacing);
-
-	for (const auto& dNodeInfo : drawableTree) {
-		PointF currentPos = positions[dNodeInfo.nodePtr];
-		RectangleF nodeRect(currentPos.X, currentPos.Y, nodeWidth, nodeHeight);
-
-		Brush^ currentBrush;
-		Pen^ currentBorderPen;
-
-		if (dNodeInfo.nodePtr->status == LinkStatus::Broken) {
-			currentBrush = nodeBrushBroken;
-			currentBorderPen = borderPenBroken;
-		}
-		else if (dNodeInfo.nodePtr->type == LinkType::Internal) {
-			currentBrush = nodeBrushInternal;
-			currentBorderPen = borderPenInternal;
-		}
-		else {
-			currentBrush = nodeBrushExternal;
-			currentBorderPen = borderPenExternal;
-		}
-
-		GraphicsPath^ capsulePath = gcnew GraphicsPath();
-		capsulePath->AddArc(nodeRect.X, nodeRect.Y, cornerRadius, cornerRadius, 180, 90);
-		capsulePath->AddArc(nodeRect.Right - cornerRadius, nodeRect.Y, cornerRadius, cornerRadius, 270, 90);
-		capsulePath->AddArc(nodeRect.Right - cornerRadius, nodeRect.Bottom - cornerRadius, cornerRadius, cornerRadius, 0, 90);
-		capsulePath->AddArc(nodeRect.X, nodeRect.Bottom - cornerRadius, cornerRadius, cornerRadius, 90, 90);
-		capsulePath->CloseFigure();
-
-		g->FillPath(currentBrush, capsulePath);
-		g->DrawPath(currentBorderPen, capsulePath);
-
-		String^ url = gcnew String(dNodeInfo.nodePtr->url.c_str());
-		String^ displayText = url;
-		try {
-			Uri^ uri = gcnew Uri(url);
-			displayText = (uri->PathAndQuery->Length > 1) ? uri->PathAndQuery : uri->Host;
-			if (displayText->Length > 20) {
-				displayText = "..." + displayText->Substring(displayText->Length - 17);
-			}
-		}
-		catch (Exception^) {
-			if (displayText->Length > 23) displayText = displayText->Substring(0, 20) + "...";
-		}
-
-		StringFormat^ sf = gcnew StringFormat();
-		sf->Alignment = StringAlignment::Center;
-		sf->LineAlignment = StringAlignment::Center;
-		g->DrawString(displayText, nodeFont, textBrush, nodeRect, sf);
-	}
-}
-
-
-System::Void MyForm::panelArbolGrafico_MouseWheel(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e) {
-	if (e->Delta > 0)
-		zoomLevel *= 1.1f;
-	else
-		zoomLevel /= 1.1f;
-	zoomLevel = Math::Max(0.1f, Math::Min(zoomLevel, 5.0f));
-	panelArbolGrafico->Invalidate();
-}
-
-System::Void MyForm::panelArbolGrafico_MouseDown(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e) {
-	if (e->Button == System::Windows::Forms::MouseButtons::Middle || e->Button == System::Windows::Forms::MouseButtons::Left) {
-		lastMousePos = e->Location;
-	}
-}
-
-System::Void MyForm::panelArbolGrafico_MouseMove(System::Object^ sender, System::Windows::Forms::MouseEventArgs^ e) {
-	if (e->Button == System::Windows::Forms::MouseButtons::Middle || e->Button == System::Windows::Forms::MouseButtons::Left) {
-		panOffset.X += e->X - lastMousePos.X;
-		panOffset.Y += e->Y - lastMousePos.Y;
-		lastMousePos = e->Location;
-		panelArbolGrafico->Invalidate();
-	}
 }
 
 System::Void MyForm::panelAccion_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e) {
@@ -464,15 +296,15 @@ System::Void MyForm::panelAccion_Paint(System::Object^ sender, System::Windows::
 
 System::Void MyForm::btnNuevoAnalisis_Click(System::Object^ sender, System::EventArgs^ e) {
 	System::Windows::Forms::DialogResult confirmResult = MessageBox::Show(
-		"¿Está seguro de que desea iniciar un nuevo análisis? Se perderán los resultados actuales.",
-		"Confirmar Nuevo Análisis",
+		L"¿Está seguro de que desea iniciar un nuevo análisis? Se perderán los resultados actuales.",
+		L"Confirmar Nuevo Análisis",
 		MessageBoxButtons::YesNo,
 		MessageBoxIcon::Question);
 
 	if (confirmResult == System::Windows::Forms::DialogResult::Yes) {
 		this->rtbAccionResultado->Clear();
-		this->lblAccionResultadoTitulo->Text = "Resultados de la Acción:";
-		this->txtPalabraClave->Text = "Ingrese palabra clave aquí...";
+		this->lblAccionResultadoTitulo->Text = L"Resultados de la Acción:";
+		this->txtPalabraClave->Text = L"Ingrese palabra clave aquí...";
 		this->txtPalabraClave->ForeColor = Color::Gray;
 		SwitchPanel(panelInicio);
 	}
@@ -503,8 +335,11 @@ System::Void MyForm::panelBotonSalir_Paint(System::Object^ sender, System::Windo
 	g->FillEllipse(portalBrush, rect);
 
 	Pen^ iconPen = gcnew Pen(Color::White, 2);
-	g->DrawEllipse(iconPen, rect.X + 10, rect.Y + 10, rect.Width - 20, rect.Height - 20);
-	g->DrawLine(iconPen, rect.Width / 2, rect.Y + 6, rect.Width / 2, rect.Y + 16);
+	float iconSize = 20.0f;
+	RectangleF iconRect = RectangleF((rect.Width - iconSize) / 2.0f, (rect.Height - iconSize) / 2.0f, iconSize, iconSize);
+	g->DrawArc(iconPen, iconRect, -45, 270);
+	g->DrawLine(iconPen, rect.Width / 2.0f, iconRect.Top + 2, rect.Width / 2.0f, iconRect.Top + 10);
+
 
 	delete portalBrush;
 	delete portalPath;
@@ -543,16 +378,11 @@ void MyForm::InitializeComponent(void)
 	this->progressBar = (gcnew System::Windows::Forms::ProgressBar());
 	this->lblCargando = (gcnew System::Windows::Forms::Label());
 	this->panelResultados = (gcnew System::Windows::Forms::Panel());
-	this->btnVolverResumen = (gcnew System::Windows::Forms::Button());
 	this->grpAccionResultado = (gcnew System::Windows::Forms::GroupBox());
 	this->rtbAccionResultado = (gcnew System::Windows::Forms::RichTextBox());
 	this->lblAccionResultadoTitulo = (gcnew System::Windows::Forms::Label());
 	this->txtPalabraClave = (gcnew System::Windows::Forms::TextBox());
 	this->grpAcciones = (gcnew System::Windows::Forms::GroupBox());
-	this->panelBtnVisualizar = (gcnew System::Windows::Forms::Panel());
-	this->lblBtnVisualizar = (gcnew System::Windows::Forms::Label());
-	this->panelBtnBuscarPalabra = (gcnew System::Windows::Forms::Panel());
-	this->lblBtnBuscarPalabra = (gcnew System::Windows::Forms::Label());
 	this->panelBtnDetectarRotos = (gcnew System::Windows::Forms::Panel());
 	this->lblBtnDetectarRotos = (gcnew System::Windows::Forms::Label());
 	this->panelBtnExportar = (gcnew System::Windows::Forms::Panel());
@@ -565,28 +395,29 @@ void MyForm::InitializeComponent(void)
 	this->lblEnlacesInternos = (gcnew System::Windows::Forms::Label());
 	this->lblEnlacesExternos = (gcnew System::Windows::Forms::Label());
 	this->lblProfundidadReal = (gcnew System::Windows::Forms::Label());
-	this->panelArbolGrafico = (gcnew System::Windows::Forms::Panel());
 	this->panelBtnNuevoAnalisis = (gcnew System::Windows::Forms::Panel());
 	this->lblBtnNuevoAnalisis = (gcnew System::Windows::Forms::Label());
 	this->panelBotonSalir = (gcnew System::Windows::Forms::Panel());
 	this->lblBotonSalir = (gcnew System::Windows::Forms::Label());
-
+	this->panelBtnBuscarPalabra = (gcnew System::Windows::Forms::Panel());
+	this->lblBtnBuscarPalabra = (gcnew System::Windows::Forms::Label());
 	this->panelInicio->SuspendLayout();
 	this->panelInputContainer->SuspendLayout();
 	(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->numProfundidad))->BeginInit();
 	this->panelCarga->SuspendLayout();
 	this->panelResultados->SuspendLayout();
-	this->grpResumen->SuspendLayout();
+	this->grpAccionResultado->SuspendLayout();
 	this->grpAcciones->SuspendLayout();
-	this->panelBtnVisualizar->SuspendLayout();
-	this->panelBtnBuscarPalabra->SuspendLayout();
 	this->panelBtnDetectarRotos->SuspendLayout();
 	this->panelBtnExportar->SuspendLayout();
-	this->grpAccionResultado->SuspendLayout();
+	this->grpResumen->SuspendLayout();
 	this->panelBtnNuevoAnalisis->SuspendLayout();
 	this->panelBotonSalir->SuspendLayout();
+	this->panelBtnBuscarPalabra->SuspendLayout();
 	this->SuspendLayout();
-
+	// 
+	// panelInicio
+	// 
 	this->panelInicio->Controls->Add(this->panelInputContainer);
 	this->panelInicio->Controls->Add(this->lblTitulo);
 	this->panelInicio->Controls->Add(this->cmbLanguage);
@@ -595,7 +426,10 @@ void MyForm::InitializeComponent(void)
 	this->panelInicio->Name = L"panelInicio";
 	this->panelInicio->Size = System::Drawing::Size(900, 700);
 	this->panelInicio->TabIndex = 0;
-
+	// 
+	// panelInputContainer
+	// 
+	this->panelInputContainer->Anchor = System::Windows::Forms::AnchorStyles::None;
 	this->panelInputContainer->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(42)), static_cast<System::Int32>(static_cast<System::Byte>(41)), static_cast<System::Int32>(static_cast<System::Byte>(64)));
 	this->panelInputContainer->Controls->Add(this->lblUrl);
 	this->panelInputContainer->Controls->Add(this->txtUrl);
@@ -603,12 +437,14 @@ void MyForm::InitializeComponent(void)
 	this->panelInputContainer->Controls->Add(this->lblProfundidad);
 	this->panelInputContainer->Controls->Add(this->numProfundidad);
 	this->panelInputContainer->Controls->Add(this->panelBotonAnalisis);
-	this->panelInputContainer->Location = System::Drawing::Point(200, 150);
+	this->panelInputContainer->Location = System::Drawing::Point(200, 200);
 	this->panelInputContainer->Name = L"panelInputContainer";
 	this->panelInputContainer->Size = System::Drawing::Size(500, 300);
 	this->panelInputContainer->TabIndex = 2;
 	this->panelInputContainer->Region = System::Drawing::Region::FromHrgn((IntPtr)CreateRoundRectRgn(0, 0, 500, 300, 20, 20));
-
+	// 
+	// lblUrl
+	// 
 	this->lblUrl->AutoSize = true;
 	this->lblUrl->Font = (gcnew System::Drawing::Font(L"Segoe UI", 11.25F));
 	this->lblUrl->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(200)), static_cast<System::Int32>(static_cast<System::Byte>(200)), static_cast<System::Int32>(static_cast<System::Byte>(220)));
@@ -617,7 +453,9 @@ void MyForm::InitializeComponent(void)
 	this->lblUrl->Size = System::Drawing::Size(332, 25);
 	this->lblUrl->TabIndex = 0;
 	this->lblUrl->Text = L"Ingrese la URL del sitio web a analizar:";
-
+	// 
+	// txtUrl
+	// 
 	this->txtUrl->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(28)), static_cast<System::Int32>(static_cast<System::Byte>(27)), static_cast<System::Int32>(static_cast<System::Byte>(45)));
 	this->txtUrl->BorderStyle = System::Windows::Forms::BorderStyle::FixedSingle;
 	this->txtUrl->Font = (gcnew System::Drawing::Font(L"Segoe UI", 11.25F));
@@ -627,7 +465,9 @@ void MyForm::InitializeComponent(void)
 	this->txtUrl->Size = System::Drawing::Size(412, 32);
 	this->txtUrl->TabIndex = 1;
 	this->txtUrl->Text = L"https://www.uneg.edu.ve";
-
+	// 
+	// lblEjemploUrl
+	// 
 	this->lblEjemploUrl->AutoSize = true;
 	this->lblEjemploUrl->ForeColor = System::Drawing::Color::Gray;
 	this->lblEjemploUrl->Location = System::Drawing::Point(42, 94);
@@ -635,7 +475,9 @@ void MyForm::InitializeComponent(void)
 	this->lblEjemploUrl->Size = System::Drawing::Size(222, 23);
 	this->lblEjemploUrl->TabIndex = 2;
 	this->lblEjemploUrl->Text = L"Ej: https://www.uneg.edu.ve";
-
+	// 
+	// lblProfundidad
+	// 
 	this->lblProfundidad->AutoSize = true;
 	this->lblProfundidad->Font = (gcnew System::Drawing::Font(L"Segoe UI", 11.25F));
 	this->lblProfundidad->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(200)), static_cast<System::Int32>(static_cast<System::Byte>(200)), static_cast<System::Int32>(static_cast<System::Byte>(220)));
@@ -644,7 +486,9 @@ void MyForm::InitializeComponent(void)
 	this->lblProfundidad->Size = System::Drawing::Size(377, 25);
 	this->lblProfundidad->TabIndex = 3;
 	this->lblProfundidad->Text = L"Nivel de profundidad (0 para solo la página raíz):";
-
+	// 
+	// numProfundidad
+	// 
 	this->numProfundidad->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(28)), static_cast<System::Int32>(static_cast<System::Byte>(27)), static_cast<System::Int32>(static_cast<System::Byte>(45)));
 	this->numProfundidad->BorderStyle = System::Windows::Forms::BorderStyle::FixedSingle;
 	this->numProfundidad->Font = (gcnew System::Drawing::Font(L"Segoe UI", 11.25F));
@@ -653,8 +497,10 @@ void MyForm::InitializeComponent(void)
 	this->numProfundidad->Name = L"numProfundidad";
 	this->numProfundidad->Size = System::Drawing::Size(100, 32);
 	this->numProfundidad->TabIndex = 4;
-	this->numProfundidad->Value = System::Decimal(gcnew cli::array< System::Int32 >(4) { 2, 0, 0, 0 });
-
+	this->numProfundidad->Value = System::Decimal(gcnew cli::array< System::Int32 >(4) { 1, 0, 0, 0 });
+	// 
+	// panelBotonAnalisis
+	// 
 	this->panelBotonAnalisis->Controls->Add(this->lblBotonAnalisis);
 	this->panelBotonAnalisis->Cursor = System::Windows::Forms::Cursors::Hand;
 	this->panelBotonAnalisis->Location = System::Drawing::Point(150, 230);
@@ -664,7 +510,9 @@ void MyForm::InitializeComponent(void)
 	this->panelBotonAnalisis->Region = System::Drawing::Region::FromHrgn((IntPtr)CreateRoundRectRgn(0, 0, 200, 50, 25, 25));
 	this->panelBotonAnalisis->Click += gcnew System::EventHandler(this, &MyForm::btnIniciarAnalisis_Click);
 	this->panelBotonAnalisis->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &MyForm::panelBotonAnalisis_Paint);
-
+	// 
+	// lblBotonAnalisis
+	// 
 	this->lblBotonAnalisis->BackColor = System::Drawing::Color::Transparent;
 	this->lblBotonAnalisis->Dock = System::Windows::Forms::DockStyle::Fill;
 	this->lblBotonAnalisis->Font = (gcnew System::Drawing::Font(L"Segoe UI", 12, System::Drawing::FontStyle::Bold));
@@ -676,27 +524,35 @@ void MyForm::InitializeComponent(void)
 	this->lblBotonAnalisis->Text = L"INICIAR ANÁLISIS";
 	this->lblBotonAnalisis->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
 	this->lblBotonAnalisis->Click += gcnew System::EventHandler(this, &MyForm::btnIniciarAnalisis_Click);
-
-	this->lblTitulo->AutoSize = true;
+	// 
+	// lblTitulo
+	// 
+	this->lblTitulo->Anchor = System::Windows::Forms::AnchorStyles::Top;
 	this->lblTitulo->Font = (gcnew System::Drawing::Font(L"Segoe UI", 22.2F, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point, static_cast<System::Byte>(0)));
-	this->lblTitulo->Location = System::Drawing::Point(30, 20);
+	this->lblTitulo->Location = System::Drawing::Point(12, 58);
 	this->lblTitulo->Name = L"lblTitulo";
-	this->lblTitulo->Size = System::Drawing::Size(588, 50);
+	this->lblTitulo->Size = System::Drawing::Size(876, 50);
 	this->lblTitulo->TabIndex = 1;
 	this->lblTitulo->Text = L"NexusCrawler - Analizador de Sitios Web";
-
+	this->lblTitulo->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
+	// 
+	// cmbLanguage
+	// 
+	this->cmbLanguage->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
 	this->cmbLanguage->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(45)), static_cast<System::Int32>(static_cast<System::Byte>(45)), static_cast<System::Int32>(static_cast<System::Byte>(68)));
 	this->cmbLanguage->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 	this->cmbLanguage->FlatStyle = System::Windows::Forms::FlatStyle::Flat;
 	this->cmbLanguage->ForeColor = System::Drawing::Color::White;
 	this->cmbLanguage->FormattingEnabled = true;
 	this->cmbLanguage->Items->AddRange(gcnew cli::array< System::Object^  >(2) { L"Español", L"English" });
-	this->cmbLanguage->Location = System::Drawing::Point(750, 25);
+	this->cmbLanguage->Location = System::Drawing::Point(759, 20);
 	this->cmbLanguage->Name = L"cmbLanguage";
 	this->cmbLanguage->Size = System::Drawing::Size(121, 31);
 	this->cmbLanguage->TabIndex = 0;
 	this->cmbLanguage->SelectedIndex = 0;
-
+	// 
+	// panelCarga
+	// 
 	this->panelCarga->Controls->Add(this->progressBar);
 	this->panelCarga->Controls->Add(this->lblCargando);
 	this->panelCarga->Dock = System::Windows::Forms::DockStyle::Fill;
@@ -704,14 +560,20 @@ void MyForm::InitializeComponent(void)
 	this->panelCarga->Name = L"panelCarga";
 	this->panelCarga->Size = System::Drawing::Size(900, 700);
 	this->panelCarga->TabIndex = 3;
-
+	// 
+	// progressBar
+	// 
+	this->progressBar->Anchor = System::Windows::Forms::AnchorStyles::None;
 	this->progressBar->Location = System::Drawing::Point(200, 338);
 	this->progressBar->MarqueeAnimationSpeed = 30;
 	this->progressBar->Name = L"progressBar";
 	this->progressBar->Size = System::Drawing::Size(500, 23);
 	this->progressBar->Style = System::Windows::Forms::ProgressBarStyle::Marquee;
 	this->progressBar->TabIndex = 2;
-
+	// 
+	// lblCargando
+	// 
+	this->lblCargando->Anchor = System::Windows::Forms::AnchorStyles::None;
 	this->lblCargando->Font = (gcnew System::Drawing::Font(L"Segoe UI", 18, System::Drawing::FontStyle::Regular, System::Drawing::GraphicsUnit::Point, static_cast<System::Byte>(0)));
 	this->lblCargando->Location = System::Drawing::Point(50, 288);
 	this->lblCargando->Name = L"lblCargando";
@@ -719,133 +581,94 @@ void MyForm::InitializeComponent(void)
 	this->lblCargando->TabIndex = 1;
 	this->lblCargando->Text = L"Analizando sitio web, por favor espere...";
 	this->lblCargando->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
-
-	this->panelResultados->Controls->Add(this->panelBotonSalir);
-	this->panelResultados->Controls->Add(this->btnVolverResumen);
+	// 
+	// panelResultados
+	// 
 	this->panelResultados->Controls->Add(this->grpAccionResultado);
 	this->panelResultados->Controls->Add(this->grpAcciones);
 	this->panelResultados->Controls->Add(this->grpResumen);
-	this->panelResultados->Controls->Add(this->panelArbolGrafico);
 	this->panelResultados->Dock = System::Windows::Forms::DockStyle::Fill;
 	this->panelResultados->Location = System::Drawing::Point(0, 0);
 	this->panelResultados->Name = L"panelResultados";
+	this->panelResultados->Padding = System::Windows::Forms::Padding(10);
 	this->panelResultados->Size = System::Drawing::Size(900, 700);
 	this->panelResultados->TabIndex = 4;
-
-	this->btnVolverResumen->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left));
-	this->btnVolverResumen->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9, System::Drawing::FontStyle::Bold));
-	this->btnVolverResumen->FlatStyle = System::Windows::Forms::FlatStyle::Flat;
-	this->btnVolverResumen->FlatAppearance->BorderColor = System::Drawing::Color::White;
-	this->btnVolverResumen->FlatAppearance->BorderSize = 1;
-	this->btnVolverResumen->BackColor = System::Drawing::Color::Firebrick;
-	this->btnVolverResumen->ForeColor = System::Drawing::Color::White;
-	this->btnVolverResumen->Location = System::Drawing::Point(20, 640);
-	this->btnVolverResumen->Name = L"btnVolverResumen";
-	this->btnVolverResumen->Size = System::Drawing::Size(180, 30);
-	this->btnVolverResumen->TabIndex = 5;
-	this->btnVolverResumen->Text = L"< Volver al Resumen";
-	this->btnVolverResumen->UseVisualStyleBackColor = false;
-	this->btnVolverResumen->Visible = false;
-	this->btnVolverResumen->Click += gcnew System::EventHandler(this, &MyForm::btnVolverResumen_Click);
-
+	// 
+	// grpAccionResultado
+	// 
+	this->grpAccionResultado->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom)
+		| System::Windows::Forms::AnchorStyles::Left)
+		| System::Windows::Forms::AnchorStyles::Right));
 	this->grpAccionResultado->Controls->Add(this->rtbAccionResultado);
 	this->grpAccionResultado->Controls->Add(this->lblAccionResultadoTitulo);
 	this->grpAccionResultado->Controls->Add(this->txtPalabraClave);
+	this->grpAccionResultado->Controls->Add(this->panelBtnBuscarPalabra);
 	this->grpAccionResultado->ForeColor = System::Drawing::Color::White;
-	this->grpAccionResultado->Location = System::Drawing::Point(460, 150);
+	this->grpAccionResultado->Location = System::Drawing::Point(460, 110);
 	this->grpAccionResultado->Name = L"grpAccionResultado";
-	this->grpAccionResultado->Size = System::Drawing::Size(420, 240);
+	this->grpAccionResultado->Size = System::Drawing::Size(420, 560);
 	this->grpAccionResultado->TabIndex = 3;
 	this->grpAccionResultado->TabStop = false;
 	this->grpAccionResultado->Text = L"Búsqueda y Resultados";
-
-	this->rtbAccionResultado->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom)
-		| System::Windows::Forms::AnchorStyles::Left));
+	// 
+	// rtbAccionResultado
+	// 
+	this->rtbAccionResultado->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom)
+		| System::Windows::Forms::AnchorStyles::Left)
+		| System::Windows::Forms::AnchorStyles::Right));
 	this->rtbAccionResultado->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(42)), static_cast<System::Int32>(static_cast<System::Byte>(41)), static_cast<System::Int32>(static_cast<System::Byte>(64)));
 	this->rtbAccionResultado->BorderStyle = System::Windows::Forms::BorderStyle::None;
 	this->rtbAccionResultado->Font = (gcnew System::Drawing::Font(L"Consolas", 10.2F));
 	this->rtbAccionResultado->ForeColor = System::Drawing::Color::Gainsboro;
-	this->rtbAccionResultado->Location = System::Drawing::Point(15, 100);
+	this->rtbAccionResultado->Location = System::Drawing::Point(15, 110);
 	this->rtbAccionResultado->Name = L"rtbAccionResultado";
 	this->rtbAccionResultado->ReadOnly = true;
-	this->rtbAccionResultado->Size = System::Drawing::Size(390, 125);
+	this->rtbAccionResultado->Size = System::Drawing::Size(390, 435);
 	this->rtbAccionResultado->TabIndex = 3;
 	this->rtbAccionResultado->Text = L"";
 	this->rtbAccionResultado->DetectUrls = true;
 	this->rtbAccionResultado->LinkClicked += gcnew System::Windows::Forms::LinkClickedEventHandler(this, &MyForm::rtbAccionResultado_LinkClicked);
-
+	// 
+	// lblAccionResultadoTitulo
+	// 
 	this->lblAccionResultadoTitulo->AutoSize = true;
 	this->lblAccionResultadoTitulo->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10.2F, System::Drawing::FontStyle::Bold));
-	this->lblAccionResultadoTitulo->Location = System::Drawing::Point(15, 70);
+	this->lblAccionResultadoTitulo->Location = System::Drawing::Point(15, 80);
 	this->lblAccionResultadoTitulo->Name = L"lblAccionResultadoTitulo";
 	this->lblAccionResultadoTitulo->Size = System::Drawing::Size(201, 23);
 	this->lblAccionResultadoTitulo->TabIndex = 1;
 	this->lblAccionResultadoTitulo->Text = L"Resultados de la Acción:";
-
+	// 
+	// txtPalabraClave
+	// 
+	this->txtPalabraClave->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Left)
+		| System::Windows::Forms::AnchorStyles::Right));
 	this->txtPalabraClave->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(28)), static_cast<System::Int32>(static_cast<System::Byte>(27)), static_cast<System::Int32>(static_cast<System::Byte>(45)));
 	this->txtPalabraClave->BorderStyle = System::Windows::Forms::BorderStyle::FixedSingle;
 	this->txtPalabraClave->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10.2F));
 	this->txtPalabraClave->ForeColor = System::Drawing::Color::Gray;
 	this->txtPalabraClave->Location = System::Drawing::Point(15, 30);
 	this->txtPalabraClave->Name = L"txtPalabraClave";
-	this->txtPalabraClave->Size = System::Drawing::Size(390, 30);
+	this->txtPalabraClave->Size = System::Drawing::Size(210, 30);
 	this->txtPalabraClave->TabIndex = 2;
 	this->txtPalabraClave->Text = L"Ingrese palabra clave aquí...";
 	this->txtPalabraClave->Enter += gcnew System::EventHandler(this, &MyForm::txtPalabraClave_Enter);
 	this->txtPalabraClave->Leave += gcnew System::EventHandler(this, &MyForm::txtPalabraClave_Leave);
-
-	this->grpAcciones->Controls->Add(this->panelBtnVisualizar);
-	this->grpAcciones->Controls->Add(this->panelBtnBuscarPalabra);
+	// 
+	// grpAcciones
+	// 
 	this->grpAcciones->Controls->Add(this->panelBtnDetectarRotos);
 	this->grpAcciones->Controls->Add(this->panelBtnExportar);
 	this->grpAcciones->ForeColor = System::Drawing::Color::White;
 	this->grpAcciones->Location = System::Drawing::Point(460, 20);
 	this->grpAcciones->Name = L"grpAcciones";
-	this->grpAcciones->Size = System::Drawing::Size(420, 120);
+	this->grpAcciones->Size = System::Drawing::Size(420, 80);
 	this->grpAcciones->TabIndex = 1;
 	this->grpAcciones->TabStop = false;
-	this->grpAcciones->Text = L"Acciones";
-
-	this->panelBtnVisualizar->Controls->Add(this->lblBtnVisualizar);
-	this->panelBtnVisualizar->Cursor = System::Windows::Forms::Cursors::Hand;
-	this->panelBtnVisualizar->Location = System::Drawing::Point(220, 70);
-	this->panelBtnVisualizar->Name = L"panelBtnVisualizar";
-	this->panelBtnVisualizar->Size = System::Drawing::Size(180, 40);
-	this->panelBtnVisualizar->TabIndex = 3;
-	this->panelBtnVisualizar->Click += gcnew System::EventHandler(this, &MyForm::btnVisualizarArbol_Click);
-	this->panelBtnVisualizar->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &MyForm::panelAccion_Paint);
-
-	this->lblBtnVisualizar->BackColor = System::Drawing::Color::Transparent;
-	this->lblBtnVisualizar->Dock = System::Windows::Forms::DockStyle::Fill;
-	this->lblBtnVisualizar->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9, System::Drawing::FontStyle::Bold));
-	this->lblBtnVisualizar->ForeColor = System::Drawing::Color::White;
-	this->lblBtnVisualizar->Name = L"lblBtnVisualizar";
-	this->lblBtnVisualizar->Size = System::Drawing::Size(180, 40);
-	this->lblBtnVisualizar->TabIndex = 0;
-	this->lblBtnVisualizar->Text = L"VISUALIZAR ÁRBOL";
-	this->lblBtnVisualizar->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
-	this->lblBtnVisualizar->Click += gcnew System::EventHandler(this, &MyForm::btnVisualizarArbol_Click);
-
-	this->panelBtnBuscarPalabra->Controls->Add(this->lblBtnBuscarPalabra);
-	this->panelBtnBuscarPalabra->Cursor = System::Windows::Forms::Cursors::Hand;
-	this->panelBtnBuscarPalabra->Location = System::Drawing::Point(220, 25);
-	this->panelBtnBuscarPalabra->Name = L"panelBtnBuscarPalabra";
-	this->panelBtnBuscarPalabra->Size = System::Drawing::Size(180, 40);
-	this->panelBtnBuscarPalabra->TabIndex = 2;
-	this->panelBtnBuscarPalabra->Click += gcnew System::EventHandler(this, &MyForm::btnBuscarPalabra_Click);
-	this->panelBtnBuscarPalabra->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &MyForm::panelAccion_Paint);
-
-	this->lblBtnBuscarPalabra->BackColor = System::Drawing::Color::Transparent;
-	this->lblBtnBuscarPalabra->Dock = System::Windows::Forms::DockStyle::Fill;
-	this->lblBtnBuscarPalabra->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9, System::Drawing::FontStyle::Bold));
-	this->lblBtnBuscarPalabra->ForeColor = System::Drawing::Color::White;
-	this->lblBtnBuscarPalabra->Name = L"lblBtnBuscarPalabra";
-	this->lblBtnBuscarPalabra->Size = System::Drawing::Size(180, 40);
-	this->lblBtnBuscarPalabra->TabIndex = 0;
-	this->lblBtnBuscarPalabra->Text = L"BUSCAR CLAVE";
-	this->lblBtnBuscarPalabra->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
-	this->lblBtnBuscarPalabra->Click += gcnew System::EventHandler(this, &MyForm::btnBuscarPalabra_Click);
-
+	this->grpAcciones->Text = L"Acciones Generales";
+	// 
+	// panelBtnDetectarRotos
+	// 
 	this->panelBtnDetectarRotos->Controls->Add(this->lblBtnDetectarRotos);
 	this->panelBtnDetectarRotos->Cursor = System::Windows::Forms::Cursors::Hand;
 	this->panelBtnDetectarRotos->Location = System::Drawing::Point(20, 25);
@@ -854,38 +677,50 @@ void MyForm::InitializeComponent(void)
 	this->panelBtnDetectarRotos->TabIndex = 1;
 	this->panelBtnDetectarRotos->Click += gcnew System::EventHandler(this, &MyForm::btnDetectarRotos_Click);
 	this->panelBtnDetectarRotos->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &MyForm::panelAccion_Paint);
-
+	// 
+	// lblBtnDetectarRotos
+	// 
 	this->lblBtnDetectarRotos->BackColor = System::Drawing::Color::Transparent;
 	this->lblBtnDetectarRotos->Dock = System::Windows::Forms::DockStyle::Fill;
 	this->lblBtnDetectarRotos->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9, System::Drawing::FontStyle::Bold));
 	this->lblBtnDetectarRotos->ForeColor = System::Drawing::Color::White;
+	this->lblBtnDetectarRotos->Location = System::Drawing::Point(0, 0);
 	this->lblBtnDetectarRotos->Name = L"lblBtnDetectarRotos";
 	this->lblBtnDetectarRotos->Size = System::Drawing::Size(180, 40);
 	this->lblBtnDetectarRotos->TabIndex = 0;
 	this->lblBtnDetectarRotos->Text = L"ENLACES ROTOS";
 	this->lblBtnDetectarRotos->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
 	this->lblBtnDetectarRotos->Click += gcnew System::EventHandler(this, &MyForm::btnDetectarRotos_Click);
-
+	// 
+	// panelBtnExportar
+	// 
 	this->panelBtnExportar->Controls->Add(this->lblBtnExportar);
 	this->panelBtnExportar->Cursor = System::Windows::Forms::Cursors::Hand;
-	this->panelBtnExportar->Location = System::Drawing::Point(20, 70);
+	this->panelBtnExportar->Location = System::Drawing::Point(220, 25);
 	this->panelBtnExportar->Name = L"panelBtnExportar";
 	this->panelBtnExportar->Size = System::Drawing::Size(180, 40);
 	this->panelBtnExportar->TabIndex = 0;
 	this->panelBtnExportar->Click += gcnew System::EventHandler(this, &MyForm::btnExportar_Click);
 	this->panelBtnExportar->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &MyForm::panelAccion_Paint);
-
+	// 
+	// lblBtnExportar
+	// 
 	this->lblBtnExportar->BackColor = System::Drawing::Color::Transparent;
 	this->lblBtnExportar->Dock = System::Windows::Forms::DockStyle::Fill;
 	this->lblBtnExportar->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9, System::Drawing::FontStyle::Bold));
 	this->lblBtnExportar->ForeColor = System::Drawing::Color::White;
+	this->lblBtnExportar->Location = System::Drawing::Point(0, 0);
 	this->lblBtnExportar->Name = L"lblBtnExportar";
 	this->lblBtnExportar->Size = System::Drawing::Size(180, 40);
 	this->lblBtnExportar->TabIndex = 0;
-	this->lblBtnExportar->Text = L"EXPORTAR ÁRBOL";
+	this->lblBtnExportar->Text = L"EXPORTAR HTML";
 	this->lblBtnExportar->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
 	this->lblBtnExportar->Click += gcnew System::EventHandler(this, &MyForm::btnExportar_Click);
-
+	// 
+	// grpResumen
+	// 
+	this->grpResumen->Anchor = static_cast<System::Windows::Forms::AnchorStyles>(((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom)
+		| System::Windows::Forms::AnchorStyles::Left));
 	this->grpResumen->Controls->Add(this->lblResumenTitulo);
 	this->grpResumen->Controls->Add(this->lblUrlAnalizada);
 	this->grpResumen->Controls->Add(this->lblProfundidadSolicitada);
@@ -897,11 +732,13 @@ void MyForm::InitializeComponent(void)
 	this->grpResumen->ForeColor = System::Drawing::Color::White;
 	this->grpResumen->Location = System::Drawing::Point(20, 20);
 	this->grpResumen->Name = L"grpResumen";
-	this->grpResumen->Size = System::Drawing::Size(420, 320);
+	this->grpResumen->Size = System::Drawing::Size(420, 650);
 	this->grpResumen->TabIndex = 0;
 	this->grpResumen->TabStop = false;
 	this->grpResumen->Text = L"Resumen del Análisis";
-
+	// 
+	// lblResumenTitulo
+	// 
 	this->lblResumenTitulo->AutoSize = true;
 	this->lblResumenTitulo->Font = (gcnew System::Drawing::Font(L"Segoe UI", 14, System::Drawing::FontStyle::Bold));
 	this->lblResumenTitulo->Location = System::Drawing::Point(15, 25);
@@ -909,7 +746,9 @@ void MyForm::InitializeComponent(void)
 	this->lblResumenTitulo->Size = System::Drawing::Size(331, 32);
 	this->lblResumenTitulo->TabIndex = 0;
 	this->lblResumenTitulo->Text = L">>> RESUMEN DEL ANÁLISIS";
-
+	// 
+	// lblUrlAnalizada
+	// 
 	this->lblUrlAnalizada->AutoSize = true;
 	this->lblUrlAnalizada->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
 	this->lblUrlAnalizada->Location = System::Drawing::Point(15, 70);
@@ -917,7 +756,9 @@ void MyForm::InitializeComponent(void)
 	this->lblUrlAnalizada->Size = System::Drawing::Size(155, 23);
 	this->lblUrlAnalizada->TabIndex = 1;
 	this->lblUrlAnalizada->Text = L"URL Raíz Analizada:";
-
+	// 
+	// lblProfundidadSolicitada
+	// 
 	this->lblProfundidadSolicitada->AutoSize = true;
 	this->lblProfundidadSolicitada->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
 	this->lblProfundidadSolicitada->Location = System::Drawing::Point(15, 100);
@@ -925,7 +766,9 @@ void MyForm::InitializeComponent(void)
 	this->lblProfundidadSolicitada->Size = System::Drawing::Size(262, 23);
 	this->lblProfundidadSolicitada->TabIndex = 2;
 	this->lblProfundidadSolicitada->Text = L"Profundidad de Análisis Solicitada:";
-
+	// 
+	// lblTotalNodos
+	// 
 	this->lblTotalNodos->AutoSize = true;
 	this->lblTotalNodos->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
 	this->lblTotalNodos->Location = System::Drawing::Point(15, 130);
@@ -933,7 +776,9 @@ void MyForm::InitializeComponent(void)
 	this->lblTotalNodos->Size = System::Drawing::Size(292, 23);
 	this->lblTotalNodos->TabIndex = 3;
 	this->lblTotalNodos->Text = L"Total de Nodos/Páginas Descubiertas:";
-
+	// 
+	// lblEnlacesInternos
+	// 
 	this->lblEnlacesInternos->AutoSize = true;
 	this->lblEnlacesInternos->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
 	this->lblEnlacesInternos->Location = System::Drawing::Point(15, 160);
@@ -941,7 +786,9 @@ void MyForm::InitializeComponent(void)
 	this->lblEnlacesInternos->Size = System::Drawing::Size(232, 23);
 	this->lblEnlacesInternos->TabIndex = 4;
 	this->lblEnlacesInternos->Text = L"Enlaces Internos Encontrados:";
-
+	// 
+	// lblEnlacesExternos
+	// 
 	this->lblEnlacesExternos->AutoSize = true;
 	this->lblEnlacesExternos->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
 	this->lblEnlacesExternos->Location = System::Drawing::Point(15, 190);
@@ -949,7 +796,9 @@ void MyForm::InitializeComponent(void)
 	this->lblEnlacesExternos->Size = System::Drawing::Size(236, 23);
 	this->lblEnlacesExternos->TabIndex = 5;
 	this->lblEnlacesExternos->Text = L"Enlaces Externos Encontrados:";
-
+	// 
+	// lblProfundidadReal
+	// 
 	this->lblProfundidadReal->AutoSize = true;
 	this->lblProfundidadReal->Font = (gcnew System::Drawing::Font(L"Segoe UI", 10));
 	this->lblProfundidadReal->Location = System::Drawing::Point(15, 220);
@@ -957,31 +806,21 @@ void MyForm::InitializeComponent(void)
 	this->lblProfundidadReal->Size = System::Drawing::Size(268, 23);
 	this->lblProfundidadReal->TabIndex = 6;
 	this->lblProfundidadReal->Text = L"Profundidad Máxima Real del Árbol:";
-
-	this->panelArbolGrafico->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom)
-		| System::Windows::Forms::AnchorStyles::Left)
-		| System::Windows::Forms::AnchorStyles::Right));
-	this->panelArbolGrafico->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(28)), static_cast<System::Int32>(static_cast<System::Byte>(27)), static_cast<System::Int32>(static_cast<System::Byte>(45)));
-	this->panelArbolGrafico->BorderStyle = System::Windows::Forms::BorderStyle::FixedSingle;
-	this->panelArbolGrafico->Location = System::Drawing::Point(20, 290);
-	this->panelArbolGrafico->Name = L"panelArbolGrafico";
-	this->panelArbolGrafico->Size = System::Drawing::Size(860, 380);
-	this->panelArbolGrafico->TabIndex = 2;
-	this->panelArbolGrafico->Visible = false;
-	this->panelArbolGrafico->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &MyForm::panelArbolGrafico_Paint);
-	this->panelArbolGrafico->MouseWheel += gcnew System::Windows::Forms::MouseEventHandler(this, &MyForm::panelArbolGrafico_MouseWheel);
-	this->panelArbolGrafico->MouseDown += gcnew System::Windows::Forms::MouseEventHandler(this, &MyForm::panelArbolGrafico_MouseDown);
-	this->panelArbolGrafico->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &MyForm::panelArbolGrafico_MouseMove);
-
+	// 
+	// panelBtnNuevoAnalisis
+	// 
+	this->panelBtnNuevoAnalisis->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Left));
 	this->panelBtnNuevoAnalisis->Controls->Add(this->lblBtnNuevoAnalisis);
 	this->panelBtnNuevoAnalisis->Cursor = System::Windows::Forms::Cursors::Hand;
-	this->panelBtnNuevoAnalisis->Location = System::Drawing::Point(20, 260);
+	this->panelBtnNuevoAnalisis->Location = System::Drawing::Point(20, 590);
 	this->panelBtnNuevoAnalisis->Name = L"panelBtnNuevoAnalisis";
 	this->panelBtnNuevoAnalisis->Size = System::Drawing::Size(180, 40);
 	this->panelBtnNuevoAnalisis->TabIndex = 7;
 	this->panelBtnNuevoAnalisis->Click += gcnew System::EventHandler(this, &MyForm::btnNuevoAnalisis_Click);
 	this->panelBtnNuevoAnalisis->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &MyForm::panelAccion_Paint);
-
+	// 
+	// lblBtnNuevoAnalisis
+	// 
 	this->lblBtnNuevoAnalisis->BackColor = System::Drawing::Color::Transparent;
 	this->lblBtnNuevoAnalisis->Dock = System::Windows::Forms::DockStyle::Fill;
 	this->lblBtnNuevoAnalisis->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9, System::Drawing::FontStyle::Bold));
@@ -993,11 +832,13 @@ void MyForm::InitializeComponent(void)
 	this->lblBtnNuevoAnalisis->Text = L"NUEVO ANÁLISIS";
 	this->lblBtnNuevoAnalisis->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
 	this->lblBtnNuevoAnalisis->Click += gcnew System::EventHandler(this, &MyForm::btnNuevoAnalisis_Click);
-
-	this->panelBotonSalir->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
+	// 
+	// panelBotonSalir
+	// 
+	this->panelBotonSalir->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Bottom | System::Windows::Forms::AnchorStyles::Right));
 	this->panelBotonSalir->BackColor = System::Drawing::Color::Transparent;
 	this->panelBotonSalir->Cursor = System::Windows::Forms::Cursors::Hand;
-	this->panelBotonSalir->Location = System::Drawing::Point(840, 20);
+	this->panelBotonSalir->Location = System::Drawing::Point(840, 640);
 	this->panelBotonSalir->Name = L"panelBotonSalir";
 	this->panelBotonSalir->Size = System::Drawing::Size(40, 40);
 	this->panelBotonSalir->TabIndex = 6;
@@ -1005,45 +846,78 @@ void MyForm::InitializeComponent(void)
 	this->panelBotonSalir->Click += gcnew System::EventHandler(this, &MyForm::panelBotonSalir_Click);
 	this->panelBotonSalir->MouseEnter += gcnew System::EventHandler(this, &MyForm::panelBotonSalir_MouseEnter);
 	this->panelBotonSalir->MouseLeave += gcnew System::EventHandler(this, &MyForm::panelBotonSalir_MouseLeave);
-
+	// 
+	// lblBotonSalir
+	// 
+	this->lblBotonSalir->Location = System::Drawing::Point(0, 0);
+	this->lblBotonSalir->Name = L"lblBotonSalir";
+	this->lblBotonSalir->Size = System::Drawing::Size(100, 23);
+	this->lblBotonSalir->TabIndex = 0;
+	// 
+	// panelBtnBuscarPalabra
+	// 
+	this->panelBtnBuscarPalabra->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Right));
+	this->panelBtnBuscarPalabra->Controls->Add(this->lblBtnBuscarPalabra);
+	this->panelBtnBuscarPalabra->Cursor = System::Windows::Forms::Cursors::Hand;
+	this->panelBtnBuscarPalabra->Location = System::Drawing::Point(230, 25);
+	this->panelBtnBuscarPalabra->Name = L"panelBtnBuscarPalabra";
+	this->panelBtnBuscarPalabra->Size = System::Drawing::Size(180, 40);
+	this->panelBtnBuscarPalabra->TabIndex = 2;
+	this->panelBtnBuscarPalabra->Click += gcnew System::EventHandler(this, &MyForm::btnBuscarPalabra_Click);
+	this->panelBtnBuscarPalabra->Paint += gcnew System::Windows::Forms::PaintEventHandler(this, &MyForm::panelAccion_Paint);
+	// 
+	// lblBtnBuscarPalabra
+	// 
+	this->lblBtnBuscarPalabra->BackColor = System::Drawing::Color::Transparent;
+	this->lblBtnBuscarPalabra->Dock = System::Windows::Forms::DockStyle::Fill;
+	this->lblBtnBuscarPalabra->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9, System::Drawing::FontStyle::Bold));
+	this->lblBtnBuscarPalabra->ForeColor = System::Drawing::Color::White;
+	this->lblBtnBuscarPalabra->Location = System::Drawing::Point(0, 0);
+	this->lblBtnBuscarPalabra->Name = L"lblBtnBuscarPalabra";
+	this->lblBtnBuscarPalabra->Size = System::Drawing::Size(180, 40);
+	this->lblBtnBuscarPalabra->TabIndex = 0;
+	this->lblBtnBuscarPalabra->Text = L"BUSCAR CLAVE";
+	this->lblBtnBuscarPalabra->TextAlign = System::Drawing::ContentAlignment::MiddleCenter;
+	this->lblBtnBuscarPalabra->Click += gcnew System::EventHandler(this, &MyForm::btnBuscarPalabra_Click);
+	// 
+	// MyForm
+	// 
 	this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::None;
 	this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(28)), static_cast<System::Int32>(static_cast<System::Byte>(27)), static_cast<System::Int32>(static_cast<System::Byte>(45)));
 	this->ClientSize = System::Drawing::Size(900, 700);
+	this->Controls->Add(this->panelResultados);
 	this->Controls->Add(this->panelCarga);
 	this->Controls->Add(this->panelInicio);
-	this->Controls->Add(this->panelResultados);
 	this->Font = (gcnew System::Drawing::Font(L"Segoe UI", 9.75F));
 	this->ForeColor = System::Drawing::Color::White;
+	this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::Sizable;
+	this->MaximizeBox = true;
+	this->MinimumSize = System::Drawing::Size(920, 720);
 	this->Name = L"MyForm";
 	this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
 	this->Text = L"NexusCrawlerApp";
 	this->panelInicio->ResumeLayout(false);
-	this->panelInicio->PerformLayout();
 	this->panelInputContainer->ResumeLayout(false);
 	this->panelInputContainer->PerformLayout();
 	(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->numProfundidad))->EndInit();
 	this->panelCarga->ResumeLayout(false);
 	this->panelResultados->ResumeLayout(false);
-	this->grpResumen->ResumeLayout(false);
-	this->grpResumen->PerformLayout();
-	this->grpAcciones->ResumeLayout(false);
-	this->panelBtnVisualizar->ResumeLayout(false);
-	this->panelBtnBuscarPalabra->ResumeLayout(false);
-	this->panelBtnDetectarRotos->ResumeLayout(false);
-	this->panelBtnExportar->ResumeLayout(false);
 	this->grpAccionResultado->ResumeLayout(false);
 	this->grpAccionResultado->PerformLayout();
+	this->grpAcciones->ResumeLayout(false);
+	this->panelBtnDetectarRotos->ResumeLayout(false);
+	this->panelBtnExportar->ResumeLayout(false);
+	this->grpResumen->ResumeLayout(false);
+	this->grpResumen->PerformLayout();
 	this->panelBtnNuevoAnalisis->ResumeLayout(false);
 	this->panelBotonSalir->ResumeLayout(false);
+	this->panelBtnBuscarPalabra->ResumeLayout(false);
 	this->ResumeLayout(false);
 
 	this->crawlWorker->DoWork += gcnew System::ComponentModel::DoWorkEventHandler(this, &MyForm::crawlWorker_DoWork);
 	this->crawlWorker->RunWorkerCompleted += gcnew System::ComponentModel::RunWorkerCompletedEventHandler(this, &MyForm::crawlWorker_RunWorkerCompleted);
-
 	this->linkCheckWorker->DoWork += gcnew System::ComponentModel::DoWorkEventHandler(this, &MyForm::linkCheckWorker_DoWork);
 	this->linkCheckWorker->RunWorkerCompleted += gcnew System::ComponentModel::RunWorkerCompletedEventHandler(this, &MyForm::linkCheckWorker_RunWorkerCompleted);
-
-	// << CORRECCIÓN AQUÍ >>
 	this->searchWorker->DoWork += gcnew System::ComponentModel::DoWorkEventHandler(this, &MyForm::searchWorker_DoWork);
 	this->searchWorker->RunWorkerCompleted += gcnew System::ComponentModel::RunWorkerCompletedEventHandler(this, &MyForm::searchWorker_RunWorkerCompleted);
 }
