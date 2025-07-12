@@ -122,6 +122,68 @@
   </data>
   <data name="lblTitulo.Text" xml:space="preserve">
     <value>""</value>
-    <comment>""</comment>
+  </data>
+  <data name="lblUrl.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="lblEjemploUrl.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="lblProfundidad.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="chkIncludeSubdomains.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="lblCargando.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="grpAcciones.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="lblBtnDetectarRotos.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="lblBtnExportar.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="grpAccionResultado.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="txtPalabraClave.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="lblBtnBuscarPalabra.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="lblAccionResultadoTitulo.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="grpResumen.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="lblResumenTitulo.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="lblUrlAnalizada.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="lblProfundidadSolicitada.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="lblTotalNodos.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="lblEnlacesInternos.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="lblEnlacesExternos.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="lblProfundidadReal.Text" xml:space="preserve">
+    <value>""</value>
+  </data>
+  <data name="lblBtnNuevoAnalisis.Text" xml:space="preserve">
+    <value>""</value>
   </data>
 </root>

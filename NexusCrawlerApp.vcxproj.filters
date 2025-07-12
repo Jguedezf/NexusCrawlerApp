@@ -40,11 +40,14 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="MyForm.es.resx">
+    <EmbeddedResource Include="MyForm.en.resx">
       <Filter>Resources</Filter>
-    </Text>
-    <Text Include="MyForm.en.resx">
+    </EmbeddedResource>
+    <EmbeddedResource Include="MyForm.es.resx">
       <Filter>Resources</Filter>
-    </Text>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MyForm.resx">
+      <Filter>Resources</Filter>
+    </EmbeddedResource>
   </ItemGroup>
 </Project>
