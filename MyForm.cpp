@@ -272,6 +272,16 @@ void MyForm::SwitchPanel(Panel^ panelToShow) {
 	}
 }
 
+System::Void NexusCrawlerApp::MyForm::ApplyResourcesToControls(System::Windows::Forms::Control::ControlCollection^ controls, System::ComponentModel::ComponentResourceManager^ resources)
+{
+	for each (System::Windows::Forms::Control ^ control in controls) {
+		resources->ApplyResources(control, control->Name);
+		if (control->HasChildren) {
+			ApplyResourcesToControls(control->Controls, resources);
+		}
+	}
+}
+
 System::Void MyForm::panelBotonAnalisis_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e) {
 	Graphics^ g = e->Graphics;
 	System::Drawing::Rectangle rect = (cli::safe_cast<Panel^>(sender))->ClientRectangle;
@@ -361,9 +371,21 @@ System::Void MyForm::panelBotonSalir_MouseLeave(System::Object^ sender, System::
 	(cli::safe_cast<Panel^>(sender))->Invalidate();
 }
 
+	   // Función auxiliar para aplicar los recursos a los controles anidados (dentro de GroupBox, Panels, etc.)
+	   void ApplyResourcesToControls(System::Windows::Forms::Control::ControlCollection^ controls, System::ComponentModel::ComponentResourceManager^ resources) {
+		   for each (System::Windows::Forms::Control ^ control in controls) {
+			   resources->ApplyResources(control, control->Name);
+			   if (control->HasChildren) {
+				   ApplyResourcesToControls(control->Controls, resources);
+			   }
+		   }
+	   }
+
 #pragma region Windows Form Designer generated code
 void MyForm::InitializeComponent(void)
 {
+	
+
 	this->components = (gcnew System::ComponentModel::Container());
 	this->crawlWorker = (gcnew System::ComponentModel::BackgroundWorker());
 	this->linkCheckWorker = (gcnew System::ComponentModel::BackgroundWorker());
@@ -571,6 +593,8 @@ void MyForm::InitializeComponent(void)
 	this->cmbLanguage->Size = System::Drawing::Size(121, 31);
 	this->cmbLanguage->TabIndex = 0;
 	this->cmbLanguage->SelectedIndex = 0;
+	this->cmbLanguage->SelectedIndexChanged +=
+		gcnew System::EventHandler(this, &MyForm::cmbLanguage_SelectedIndexChanged);
 	// 
 	// panelCarga
 	// 
@@ -941,5 +965,29 @@ void MyForm::InitializeComponent(void)
 	this->linkCheckWorker->RunWorkerCompleted += gcnew System::ComponentModel::RunWorkerCompletedEventHandler(this, &MyForm::linkCheckWorker_RunWorkerCompleted);
 	this->searchWorker->DoWork += gcnew System::ComponentModel::DoWorkEventHandler(this, &MyForm::searchWorker_DoWork);
 	this->searchWorker->RunWorkerCompleted += gcnew System::ComponentModel::RunWorkerCompletedEventHandler(this, &MyForm::searchWorker_RunWorkerCompleted);
+	// 1. Cargar los recursos para la cultura detectada.
+	System::ComponentModel::ComponentResourceManager^ resources = gcnew System::ComponentModel::ComponentResourceManager(MyForm::typeid);
+
+	// 2. Aplicar los recursos a todo el formulario y sus controles hijos.
+	try
+	{
+		// 1. Usamos el ResourceManager base para ser más explícitos.
+		//    Le decimos el nombre exacto del recurso y en qué ensamblado buscar.
+		System::Resources::ResourceManager^ resources =
+			gcnew System::Resources::ResourceManager("NexusCrawlerApp.MyForm", MyForm::typeid->Assembly);
+
+		// 2. Aplicar los recursos (tu código para esto ya era correcto).
+		// NOTA: ApplyResources es un método de ComponentResourceManager, así que lo haremos manualmente.
+		this->Text = resources->GetString("$this.Text");
+		// ... tendrías que aplicar cada propiedad manualmente.
+
+		// ----- VAMOS A HACERLO MÁS FÁCIL -----
+		// Volvamos a ComponentResourceManager pero asegurémonos de que todo lo demás esté perfecto.
+		// La causa más probable sigue siendo una configuración del proyecto.
+	}
+	catch (System::Exception^ ex)
+	{
+		System::Windows::Forms::MessageBox::Show(ex->ToString(), "Error al Cargar Recursos");
+	}
 }
 #pragma endregion

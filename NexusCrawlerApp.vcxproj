@@ -153,6 +153,11 @@
       <FileType>CppForm</FileType>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="MyForm.en.resx" />
+    <EmbeddedResource Include="MyForm.es.resx" />
+    <EmbeddedResource Include="MyForm.resx" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

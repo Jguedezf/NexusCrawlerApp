@@ -96,6 +96,7 @@ namespace NexusCrawlerApp {
 
 	private:
 		void SwitchPanel(Panel^ panelToShow);
+		System::Void ApplyResourcesToControls(System::Windows::Forms::Control::ControlCollection^ controls, System::ComponentModel::ComponentResourceManager^ resources);
 		System::Void btnIniciarAnalisis_Click(System::Object^ sender, System::EventArgs^ e);
 		System::Void panelBotonAnalisis_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e);
 		System::Void btnExportar_Click(System::Object^ sender, System::EventArgs^ e);
@@ -119,5 +120,32 @@ namespace NexusCrawlerApp {
 		System::Void rtbAccionResultado_LinkClicked(System::Object^ sender, System::Windows::Forms::LinkClickedEventArgs^ e);
 		System::Void txtPalabraClave_Enter(System::Object^ sender, System::EventArgs^ e);
 		System::Void txtPalabraClave_Leave(System::Object^ sender, System::EventArgs^ e);
+
+		System::Void cmbLanguage_SelectedIndexChanged(System::Object^ sender, System::EventArgs^ e) {
+			String^ culture = "";
+			if (this->cmbLanguage->SelectedItem->ToString() == "Español") {
+				culture = "es-VE";
+			}
+			else if (this->cmbLanguage->SelectedItem->ToString() == "English") {
+				culture = "en-US";
+			}
+
+			// Cambia la "cultura" del hilo actual de la interfaz
+			System::Threading::Thread::CurrentThread->CurrentUICulture = gcnew System::Globalization::CultureInfo(culture);
+
+			// Vuelve a cargar los recursos del formulario para el nuevo idioma
+			System::ComponentModel::ComponentResourceManager^ resources = gcnew System::ComponentModel::ComponentResourceManager(MyForm::typeid);
+
+			// Itera sobre todos los controles y les aplica el nuevo texto del recurso
+			resources->ApplyResources(this, "$this");
+			ApplyResourcesToControls(this->Controls, resources);
+
+			// Actualizar el texto del placeholder del cuadro de búsqueda si es necesario
+			if (String::IsNullOrWhiteSpace(this->txtPalabraClave->Text) || this->txtPalabraClave->Text->Contains("...")) {
+				this->txtPalabraClave->Text = resources->GetString("txtPalabraClave.Text");
+			}
+		}
 	};
+
+
 }
