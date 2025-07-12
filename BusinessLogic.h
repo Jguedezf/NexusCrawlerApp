@@ -68,7 +68,7 @@ private:
     std::unordered_set<std::string> visitedUrls;
     std::string baseDomain;
     std::string scheme;
-    // Cache para no recalcular las posiciones si el árbol no ha cambiado
+    bool bIncludeSubdomains;
     std::vector<DrawableNodeInfo> drawableTreeCache;
     bool positionsCalculated = false;
 
@@ -91,12 +91,10 @@ public:
     NavigationTree();
     ~NavigationTree();
 
-    void startCrawling(const std::string& startUrl, int maxDepth);
+    void startCrawling(const std::string& startUrl, int maxDepth, bool includeSubdomains = true);
     WebNode* getRoot() const;
     AnalysisResult getAnalysisResult();
     std::vector<std::string> checkAllLinksStatus();
     PathResult findShortestPathToKeyword(const std::string& keyword);
     const std::vector<DrawableNodeInfo>& getDrawableTree() const;
-
-    // << CORRECCIÓN AQUÍ: Se eliminó la declaración de DrawConnections >>
 };

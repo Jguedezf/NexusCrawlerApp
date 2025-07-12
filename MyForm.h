@@ -23,6 +23,7 @@ namespace NexusCrawlerApp {
 	public ref struct CrawlArgs {
 		String^ Url;
 		int Depth;
+		bool IncludeSubdomains;
 	};
 
 	public ref struct SearchArgs {
@@ -56,6 +57,7 @@ namespace NexusCrawlerApp {
 		TextBox^ txtUrl;
 		Label^ lblProfundidad;
 		NumericUpDown^ numProfundidad;
+		CheckBox^ chkIncludeSubdomains; // <--- AÑADIR ESTA LÍNEA
 		Label^ lblEjemploUrl;
 		ComboBox^ cmbLanguage;
 		Panel^ panelInputContainer;

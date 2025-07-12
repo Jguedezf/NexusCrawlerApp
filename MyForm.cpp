@@ -42,6 +42,8 @@ System::Void MyForm::btnIniciarAnalisis_Click(System::Object^ sender, System::Ev
 	CrawlArgs^ args = gcnew CrawlArgs();
 	args->Url = this->txtUrl->Text;
 	args->Depth = static_cast<int>(this->numProfundidad->Value);
+	args->IncludeSubdomains = this->chkIncludeSubdomains->Checked; 
+
 	this->crawlWorker->RunWorkerAsync(args);
 }
 
@@ -49,7 +51,10 @@ System::Void MyForm::crawlWorker_DoWork(System::Object^ sender, System::Componen
 	CrawlArgs^ args = static_cast<CrawlArgs^>(e->Argument);
 	msclr::interop::marshal_context context;
 	std::string stdUrl = context.marshal_as<std::string>(args->Url);
-	crawler->startCrawling(stdUrl, args->Depth);
+
+
+	crawler->startCrawling(stdUrl, args->Depth, args->IncludeSubdomains);
+	//crawler->startCrawling(stdUrl, args->Depth);
 }
 
 System::Void MyForm::crawlWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e) {
@@ -401,6 +406,7 @@ void MyForm::InitializeComponent(void)
 	this->lblBotonSalir = (gcnew System::Windows::Forms::Label());
 	this->panelBtnBuscarPalabra = (gcnew System::Windows::Forms::Panel());
 	this->lblBtnBuscarPalabra = (gcnew System::Windows::Forms::Label());
+	this->chkIncludeSubdomains = (gcnew System::Windows::Forms::CheckBox());
 	this->panelInicio->SuspendLayout();
 	this->panelInputContainer->SuspendLayout();
 	(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->numProfundidad))->BeginInit();
@@ -436,6 +442,7 @@ void MyForm::InitializeComponent(void)
 	this->panelInputContainer->Controls->Add(this->lblEjemploUrl);
 	this->panelInputContainer->Controls->Add(this->lblProfundidad);
 	this->panelInputContainer->Controls->Add(this->numProfundidad);
+	this->panelInputContainer->Controls->Add(this->chkIncludeSubdomains);
 	this->panelInputContainer->Controls->Add(this->panelBotonAnalisis);
 	this->panelInputContainer->Location = System::Drawing::Point(200, 200);
 	this->panelInputContainer->Name = L"panelInputContainer";
@@ -498,6 +505,20 @@ void MyForm::InitializeComponent(void)
 	this->numProfundidad->Size = System::Drawing::Size(100, 32);
 	this->numProfundidad->TabIndex = 4;
 	this->numProfundidad->Value = System::Decimal(gcnew cli::array< System::Int32 >(4) { 1, 0, 0, 0 });
+	// 
+    // chkIncludeSubdomains
+    // 
+	this->chkIncludeSubdomains->AutoSize = true;
+	this->chkIncludeSubdomains->Checked = true; // Por defecto activado
+	this->chkIncludeSubdomains->CheckState = System::Windows::Forms::CheckState::Checked;
+	this->chkIncludeSubdomains->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(200)), static_cast<System::Int32>(static_cast<System::Byte>(200)), static_cast<System::Int32>(static_cast<System::Byte>(220)));
+	this->chkIncludeSubdomains->Location = System::Drawing::Point(44, 200); 
+	this->chkIncludeSubdomains->Name = L"chkIncludeSubdomains";
+	this->chkIncludeSubdomains->Size = System::Drawing::Size(180, 24);
+	this->chkIncludeSubdomains->TabIndex = 5;
+	this->chkIncludeSubdomains->Text = L"Incluir subdominios en el análisis";
+	this->chkIncludeSubdomains->UseVisualStyleBackColor = true;
+	this->chkIncludeSubdomains->BackColor = System::Drawing::Color::Transparent;
 	// 
 	// panelBotonAnalisis
 	// 

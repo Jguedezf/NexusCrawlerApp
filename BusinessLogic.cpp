@@ -115,9 +115,24 @@ void NavigationTree::search_for_links(GumboNode* node, WebNode* parentNode) {
             if (link_url == parentNode->url) {
                 return;
             }
-            LinkType type = (link_url.find(this->baseDomain) != std::string::npos) ? LinkType::Internal : LinkType::External;
+            std::string newLinkHost = getBaseDomain(link_url); 
+            LinkType type = LinkType::External; 
+
+            if (this->bIncludeSubdomains) {
+                if (newLinkHost.length() >= this->baseDomain.length() &&
+                    newLinkHost.compare(newLinkHost.length() - this->baseDomain.length(), this->baseDomain.length(), this->baseDomain) == 0) {
+                    type = LinkType::Internal;
+                }
+            }
+            else {
+                if (newLinkHost == this->baseDomain) {
+                    type = LinkType::Internal;
+                }
+            }
+
             WebNode* new_node = new WebNode(link_url, type, parentNode->depth + 1);
             parentNode->addChild(new_node);
+
         }
     }
     GumboVector* children = &node->v.element.children;
@@ -147,7 +162,7 @@ std::string NavigationTree::getBaseDomain(const std::string& url) {
     return domain;
 }
 
-void NavigationTree::startCrawling(const std::string& startUrl, int maxDepth) {
+void NavigationTree::startCrawling(const std::string& startUrl, int maxDepth, bool includeSubdomains) {
     if (root) {
         delete root;
         root = nullptr;
@@ -155,6 +170,9 @@ void NavigationTree::startCrawling(const std::string& startUrl, int maxDepth) {
     visitedUrls.clear();
     positionsCalculated = false;
     drawableTreeCache.clear();
+
+    this->bIncludeSubdomains = includeSubdomains;
+
     size_t scheme_end = startUrl.find("://");
     this->scheme = (scheme_end != std::string::npos) ? startUrl.substr(0, scheme_end) : "http";
     baseDomain = getBaseDomain(startUrl);
