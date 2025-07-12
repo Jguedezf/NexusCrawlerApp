@@ -47,7 +47,9 @@ public:
     std::string url;
     LinkType type;
     LinkStatus status;
+    WebNode* parent;
     int depth;
+    int js_id;
     std::vector<WebNode*> children;
 
     // Propiedades para el algoritmo de dibujo de árbol
@@ -57,7 +59,7 @@ public:
     WebNode* thread = nullptr;
     WebNode* ancestor = nullptr;
 
-    WebNode(const std::string& url, LinkType type, int depth);
+    WebNode(const std::string& url, LinkType type, int depth, WebNode* parentNode = nullptr);
     ~WebNode();
     void addChild(WebNode* child);
 };

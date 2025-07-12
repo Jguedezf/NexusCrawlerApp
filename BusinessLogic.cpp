@@ -14,8 +14,9 @@ struct RequestData {
 };
 
 // --- Implementacion de WebNode ---
-WebNode::WebNode(const std::string& url, LinkType type, int depth)
-    : url(url), type(type), depth(depth), status(LinkStatus::NotChecked), ancestor(this), thread(nullptr), modifier(0.0f), x_pos(0.0f), y_pos(0.0f) {
+WebNode::WebNode(const std::string& url, LinkType type, int depth, WebNode* parentNode)
+    : url(url), type(type), depth(depth), status(LinkStatus::NotChecked), ancestor(this), thread(nullptr),
+    modifier(0.0f), x_pos(0.0f), y_pos(0.0f), parent(parentNode) {
 }
 
 WebNode::~WebNode() {
@@ -130,7 +131,7 @@ void NavigationTree::search_for_links(GumboNode* node, WebNode* parentNode) {
                 }
             }
 
-            WebNode* new_node = new WebNode(link_url, type, parentNode->depth + 1);
+            WebNode* new_node = new WebNode(link_url, type, parentNode->depth + 1, parentNode);
             parentNode->addChild(new_node);
 
         }
