@@ -1,10 +1,9 @@
-﻿// DataAccess.cpp
-#include "DataAccess.h"
+﻿#include "DataAccess.h"
 #include <ctime>
 #include <functional>
 #include "MyForm.h"
 
-// <<--- CORRECCIÓN: Firma de la función ahora coincide con la declaración del .h ---
+// Escribe los datos del nodo en formato de lista HTML
 void DataAccess::writeNodeToList(std::ofstream& file, WebNode* node) {
     if (!node) return;
 
@@ -14,8 +13,9 @@ void DataAccess::writeNodeToList(std::ofstream& file, WebNode* node) {
         li_class += " expandable";
         icon_type_class = "folder";
     }
-
+    
     std::string tag = "";
+	// Determina el tipo de enlace y etiqueta
     if (node->type == LinkType::External) {
         if (NexusCrawlerApp::MyForm::currentCulture == "" || NexusCrawlerApp::MyForm::currentCulture == "es") {
             tag = "<span class='tag external-tag'>EXTERNO</span>";
@@ -23,6 +23,7 @@ void DataAccess::writeNodeToList(std::ofstream& file, WebNode* node) {
             tag = "<span class='tag external-tag'>EXTERNAL</span>";
 		}
     }
+    // Si el nodo es roto, se muestra etiqueta de error
     if (node->status == LinkStatus::Broken) {
         if (NexusCrawlerApp::MyForm::currentCulture == "" || NexusCrawlerApp::MyForm::currentCulture == "es") {
             tag = "<span class='tag broken-tag'>ROTO</span>";
@@ -31,10 +32,10 @@ void DataAccess::writeNodeToList(std::ofstream& file, WebNode* node) {
             tag = "<span class='tag broken-tag'>BROKEN</span>";
         }
     }
-
+    // Si el nodo es interno, no se muestra etiqueta
     file << "<li class='" << li_class << "'>\n";
     file << "  <div class='node-content'>\n";
-    file << "    <i class='icon " << icon_type_class << "'></i>\n"; // Ícono de folder/doc
+    file << "    <i class='icon " << icon_type_class << "'></i>\n"; 
     file << "    <a href='" << node->url << "' target='_blank'>" << node->url << "</a>\n";
     file << "    " << tag << "\n";
     file << "  </div>\n";
@@ -49,13 +50,14 @@ void DataAccess::writeNodeToList(std::ofstream& file, WebNode* node) {
     file << "</li>\n";
 }
 
+// Escribe los datos de los nodos en formato JSON para visualización en JavaScript
 void DataAccess::writeNodeDataForJs(std::ofstream& file, WebNode* node, int& nodeIdCounter) {
 	if (!node) return;
 
 	// Asignar un ID único a cada nodo
 	node->js_id = nodeIdCounter++;
 
-	// Escribir los datos del nodo actual en formato JSON
+	// Escribir los datos del nodo en formato JSON
 	file << "{ \"id\": " << node->js_id << ", \"url\": \"" << node->url << "\", \"type\": \"" << (node->type == LinkType::Internal ? "internal" : "external") << "\", \"status\": \"" << (node->status == LinkStatus::Broken ? "broken" : "ok") << "\" },\n";
 
 	// Escribir las conexiones (enlaces) a sus hijos
@@ -64,10 +66,10 @@ void DataAccess::writeNodeDataForJs(std::ofstream& file, WebNode* node, int& nod
 	}
 }
 
+// Exporta el árbol de navegación a un archivo HTML
 bool DataAccess::exportTreeToHtml(WebNode* root, const std::string& filePath,
     const std::string& analysisUrl, int requestedDepth) {
     if (NexusCrawlerApp::MyForm::currentCulture == "" || NexusCrawlerApp::MyForm::currentCulture == "es") {
-
 
         std::ofstream file(filePath);
         if (!file.is_open()) return false;
@@ -76,12 +78,12 @@ bool DataAccess::exportTreeToHtml(WebNode* root, const std::string& filePath,
         char dt[26];
         ctime_s(dt, sizeof dt, &now);
 
+		// --- Cabecera HTML ---
         file << "<!DOCTYPE html>\n<html lang='es'>\n<head>\n";
         file << "  <meta charset='UTF-8'>\n";
         file << "  <title>Reporte de Analisis - NexusCrawler</title>\n";
         file << "  <script src='https://d3js.org/d3.v7.min.js'></script>\n";
 
-        // --- CSS (Idéntico a la versión anterior) ---
         file << "<style>\n"
             "  :root { --bg-dark: #1c1b2d; --bg-medium: #2a2940; --accent: #885fff; --text-light: #f0f0f0; --text-medium: #c0c0ff; --line-color: rgba(136, 95, 255, 0.2); --neon-glow: rgba(136, 95, 255, 0.7); --tag-ext: #3b82f6; --tag-brk: #ef4444; }\n"
             "  body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: var(--bg-dark); color: var(--text-light); margin: 0; padding: 20px; }\n"
@@ -124,7 +126,7 @@ bool DataAccess::exportTreeToHtml(WebNode* root, const std::string& filePath,
             "  .tooltip { position: absolute; text-align: center; max-width: 300px; padding: 8px; font: 12px sans-serif; background: #f0f0f0; color: #1c1b2d; border: 0px; border-radius: 8px; pointer-events: none; opacity: 0; word-wrap: break-word; }\n"
             "</style>\n</head>\n<body>\n<div class='container'>\n";
 
-        // --- Cabecera, Resumen y Botones (Sin Cambios) ---
+        // --- Cabecera, Resumen y Botones ---
         file << "<h1>Reporte de Arbol de Navegacion</h1>\n"
             "<div class='summary'>"
             "<p><strong>URL Analizada:</strong> " << analysisUrl << "</p>"
@@ -136,13 +138,13 @@ bool DataAccess::exportTreeToHtml(WebNode* root, const std::string& filePath,
             "<button id='btn-tree-view'>Vista de Arbol</button>"
             "</div>\n";
 
-        // --- Contenedores de Vistas (Sin Cambios) ---
+        // --- Contenedores de Vistas ---
         file << "<div id='list-view-container' class='active'>\n<ul id='tree-root'>\n";
         writeNodeToList(file, root);
         file << "</ul>\n</div>\n";
         file << "<div id='tree-view-container'></div>\n";
 
-        // --- Generación de Datos para el Árbol (Sin Cambios) ---
+        // --- Generación de Datos para el Árbol ---
         file << "<script>\n"
             "const flatTreeData = [\n";
 
@@ -172,7 +174,6 @@ bool DataAccess::exportTreeToHtml(WebNode* root, const std::string& filePath,
 
         // --- SCRIPT DE D3.JS CON EL AJUSTE DE ESPACIADO ---
         file << R"JS(
-        // Lógica de Toggle (sin cambios)
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('#list-view-container .expandable').forEach(li => li.classList.add('expanded'));
             var toggles = document.querySelectorAll('#list-view-container .expandable > .node-content');
@@ -203,11 +204,7 @@ bool DataAccess::exportTreeToHtml(WebNode* root, const std::string& filePath,
                 .parentId(d => d.parentId)
                 (flatTreeData);
 
-            // ==================== INICIO DE LA CORRECCIÓN ====================
-            // ANTES: const treeLayout = d3.tree().size([width, root.height * 60]);
-            // AHORA: Usamos nodeSize para controlar el espacio directamente.
             const treeLayout = d3.tree().nodeSize([50, 150]); // [Separación Horizontal, Separación Vertical]
-            // ===================== FIN DE LA CORRECCIÓN ======================
 
             treeLayout(root);
             
@@ -280,7 +277,7 @@ bool DataAccess::exportTreeToHtml(WebNode* root, const std::string& filePath,
         file.close();
         return true;
     }
- else {
+ else { // Si el idioma no es español, generamos el HTML en inglés
 
      std::ofstream file(filePath);
      if (!file.is_open()) return false;
@@ -289,12 +286,13 @@ bool DataAccess::exportTreeToHtml(WebNode* root, const std::string& filePath,
      char dt[26];
      ctime_s(dt, sizeof dt, &now);
 
+	 // --- HTML Header ---
      file << "<!DOCTYPE html>\n<html lang='en'>\n<head>\n";
      file << "  <meta charset='UTF-8'>\n";
      file << "  <title>Analysis Report - NexusCrawler</title>\n";
      file << "  <script src='https://d3js.org/d3.v7.min.js'></script>\n";
 
-     // --- CSS (Idéntico a la versión anterior) ---
+     // --- CSS ---
      file << "<style>\n"
          "  :root { --bg-dark: #1c1b2d; --bg-medium: #2a2940; --accent: #885fff; --text-light: #f0f0f0; --text-medium: #c0c0ff; --line-color: rgba(136, 95, 255, 0.2); --neon-glow: rgba(136, 95, 255, 0.7); --tag-ext: #3b82f6; --tag-brk: #ef4444; }\n"
          "  body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: var(--bg-dark); color: var(--text-light); margin: 0; padding: 20px; }\n"
@@ -337,7 +335,7 @@ bool DataAccess::exportTreeToHtml(WebNode* root, const std::string& filePath,
          "  .tooltip { position: absolute; text-align: center; max-width: 300px; padding: 8px; font: 12px sans-serif; background: #f0f0f0; color: #1c1b2d; border: 0px; border-radius: 8px; pointer-events: none; opacity: 0; word-wrap: break-word; }\n"
          "</style>\n</head>\n<body>\n<div class='container'>\n";
 
-     // --- Cabecera, Resumen y Botones (Sin Cambios) ---
+     // --- Cabecera, Resumen y Botones  ---
      file << "<h1>Navigation Tree Report</h1>\n"
          "<div class='summary'>"
          "<p><strong>URL Parsed:</strong> " << analysisUrl << "</p>"
@@ -349,13 +347,13 @@ bool DataAccess::exportTreeToHtml(WebNode* root, const std::string& filePath,
          "<button id='btn-tree-view'>Tree View</button>"
          "</div>\n";
 
-     // --- Contenedores de Vistas (Sin Cambios) ---
+     // --- Contenedores de Vistas ---
      file << "<div id='list-view-container' class='active'>\n<ul id='tree-root'>\n";
      writeNodeToList(file, root);
      file << "</ul>\n</div>\n";
      file << "<div id='tree-view-container'></div>\n";
 
-     // --- Generación de Datos para el Árbol (Sin Cambios) ---
+     // --- Generación de Datos para el Árbol ---
      file << "<script>\n"
          "const flatTreeData = [\n";
 
@@ -385,7 +383,6 @@ bool DataAccess::exportTreeToHtml(WebNode* root, const std::string& filePath,
 
      // --- SCRIPT DE D3.JS CON EL AJUSTE DE ESPACIADO ---
      file << R"JS(
-        // Lógica de Toggle (sin cambios)
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('#list-view-container .expandable').forEach(li => li.classList.add('expanded'));
             var toggles = document.querySelectorAll('#list-view-container .expandable > .node-content');
@@ -403,7 +400,6 @@ bool DataAccess::exportTreeToHtml(WebNode* root, const std::string& filePath,
             btnTree.addEventListener('click', () => { treeView.classList.add('active'); listView.classList.remove('active'); btnTree.classList.add('active'); btnList.classList.remove('active'); if (!isTreeDrawn) { drawHierarchicalTree(); isTreeDrawn = true; } });
         });
 
-        // --- FUNCIÓN DE DIBUJO CON EL ESPACIADO CORREGIDO ---
         function drawHierarchicalTree() {
             if (flatTreeData.length === 0) return;
 
@@ -416,11 +412,7 @@ bool DataAccess::exportTreeToHtml(WebNode* root, const std::string& filePath,
                 .parentId(d => d.parentId)
                 (flatTreeData);
 
-            // ==================== INICIO DE LA CORRECCIÓN ====================
-            // ANTES: const treeLayout = d3.tree().size([width, root.height * 60]);
-            // AHORA: Usamos nodeSize para controlar el espacio directamente.
             const treeLayout = d3.tree().nodeSize([50, 150]); // [Separación Horizontal, Separación Vertical]
-            // ===================== FIN DE LA CORRECCIÓN ======================
 
             treeLayout(root);
             

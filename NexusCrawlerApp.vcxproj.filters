@@ -50,7 +50,4 @@
       <Filter>Resources</Filter>
     </EmbeddedResource>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="ClassDiagram.cd" />
-  </ItemGroup>
 </Project>

@@ -8,64 +8,73 @@
 
 using namespace NexusCrawlerApp;
 
-
+// Constructor del formulario.
 MyForm::MyForm(void)
 {
-	InitializeComponent();
-	crawler = new NavigationTree();
-	this->isMouseOverExit = false;
+	InitializeComponent(); // Inicializa los componentes del diseñador de Windows Forms.
+	crawler = new NavigationTree(); // Crea una instancia del objeto de lógica de negocio principal.
+	this->isMouseOverExit = false; // Flag para el efecto hover del botón de salir.
 
+	// Crea una región circular para el botón de salir, dándole una forma redonda.
 	System::Drawing::Drawing2D::GraphicsPath^ path = gcnew System::Drawing::Drawing2D::GraphicsPath();
 	path->AddEllipse(0, 0, this->panelBotonSalir->Width, this->panelBotonSalir->Height);
 	this->panelBotonSalir->Region = gcnew System::Drawing::Region(path);
 
+	// Muestra el panel de inicio al arrancar la aplicación.
 	SwitchPanel(panelInicio);
 }
 
+// Destructor del formulario.
 MyForm::~MyForm()
 {
+	// Libera la memoria de los componentes y del objeto crawler.
 	if (components) {
 		delete components;
 	}
 	delete crawler;
 }
 
+// --- Manejadores de Eventos de la Interfaz de Usuario ---
 
-// --- Manejadores de Eventos ---
-
+// Se ejecuta al hacer clic en el botón "Iniciar Análisis".
 System::Void MyForm::btnIniciarAnalisis_Click(System::Object^ sender, System::EventArgs^ e) {
-	
-		if (String::IsNullOrWhiteSpace(this->txtUrl->Text)) {
-			if (currentCulture == "" || currentCulture == "es") {
-				MessageBox::Show(L"Por favor, ingrese una URL.", L"Error");
-			}
-			else {
-				MessageBox::Show(L"Please enter a URL.", L"Error");
-			}
-			return;
+	// Valida que se haya ingresado una URL.
+	if (String::IsNullOrWhiteSpace(this->txtUrl->Text)) {
+		if (currentCulture == "" || currentCulture == "es") {
+			MessageBox::Show(L"Por favor, ingrese una URL.", L"Error");
 		}
-		if (this->crawlWorker->IsBusy) return;
-		SwitchPanel(panelCarga);
-		CrawlArgs^ args = gcnew CrawlArgs();
-		args->Url = this->txtUrl->Text;
-		args->Depth = static_cast<int>(this->numProfundidad->Value);
-		args->IncludeSubdomains = this->chkIncludeSubdomains->Checked;
+		else {
+			MessageBox::Show(L"Please enter a URL.", L"Error");
+		}
+		return;
+	}
+	// Evita iniciar un nuevo análisis si ya hay uno en curso.
+	if (this->crawlWorker->IsBusy) return;
 
-		this->crawlWorker->RunWorkerAsync(args);
-	
+	// Cambia al panel de carga y prepara los argumentos para el worker.
+	SwitchPanel(panelCarga);
+	CrawlArgs^ args = gcnew CrawlArgs();
+	args->Url = this->txtUrl->Text;
+	args->Depth = static_cast<int>(this->numProfundidad->Value);
+	args->IncludeSubdomains = this->chkIncludeSubdomains->Checked;
+
+	// Inicia el análisis en un hilo separado para no bloquear la UI.
+	this->crawlWorker->RunWorkerAsync(args);
 }
 
+// Tarea que se ejecuta en segundo plano para realizar el rastreo web.
 System::Void MyForm::crawlWorker_DoWork(System::Object^ sender, System::ComponentModel::DoWorkEventArgs^ e) {
 	CrawlArgs^ args = static_cast<CrawlArgs^>(e->Argument);
 	msclr::interop::marshal_context context;
 	std::string stdUrl = context.marshal_as<std::string>(args->Url);
 
-
+	// Llama al método de la lógica de negocio que realiza el rastreo.
 	crawler->startCrawling(stdUrl, args->Depth, args->IncludeSubdomains);
-	//crawler->startCrawling(stdUrl, args->Depth);
 }
 
+// Se ejecuta cuando el worker de rastreo ha completado su tarea.
 System::Void MyForm::crawlWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e) {
+	// Maneja cualquier error que haya ocurrido durante el análisis.
 	if (e->Error != nullptr) {
 		if (currentCulture == "" || currentCulture == "es") {
 			MessageBox::Show(L"Ocurrió un error durante el análisis: " + e->Error->Message, L"Error");
@@ -73,22 +82,36 @@ System::Void MyForm::crawlWorker_RunWorkerCompleted(System::Object^ sender, Syst
 		else {
 			MessageBox::Show(L"An error occurred during the analysis: " + e->Error->Message, L"Error");
 		}
-		SwitchPanel(panelInicio);
+		SwitchPanel(panelInicio); // Regresa al panel de inicio.
 	}
 	else {
+		// Si el análisis fue exitoso, obtiene los resultados.
 		AnalysisResult result = crawler->getAnalysisResult();
-
-		this->lblUrlAnalizada->Text += this->txtUrl->Text;
-		this->lblProfundidadSolicitada->Text += this->numProfundidad->Value.ToString();
-		this->lblTotalNodos->Text += result.totalNodes;
-		this->lblEnlacesInternos->Text += result.internalLinks;
-		this->lblEnlacesExternos->Text += result.externalLinks;
-		this->lblProfundidadReal->Text += result.maxDepth;
+		// Actualiza las etiquetas en el panel de resultados con las estadísticas del análisis.
+		if (currentCulture == "" || currentCulture == "es") {
+			this->lblUrlAnalizada->Text = "URL Raíz Analizada: " + this->txtUrl->Text;
+			this->lblProfundidadSolicitada->Text = L"Profundidad de Análisis Solicitada: " + this->numProfundidad->Value.ToString();
+			this->lblTotalNodos->Text = L"Total de Nodos/Páginas Descubiertas: " + result.totalNodes;
+			this->lblEnlacesInternos->Text = L"Enlaces Internos Encontrados: " + result.internalLinks;
+			this->lblEnlacesExternos->Text = L"Enlaces Externos Encontrados: " + result.externalLinks;
+			this->lblProfundidadReal->Text = L"Profundidad Máxima Real del Árbol: " + result.maxDepth;
+		}
+		else {
+			this->lblUrlAnalizada->Text = "Root URL Analyzed: " + this->txtUrl->Text;
+			this->lblProfundidadSolicitada->Text = L"Requested Analysis Depth: " + this->numProfundidad->Value.ToString();
+			this->lblTotalNodos->Text = L"Total Nodes/Pages Discovered: " + result.totalNodes;
+			this->lblEnlacesInternos->Text = L"Internal Links Found: " + result.internalLinks;
+			this->lblEnlacesExternos->Text = L"External Links Found: " + result.externalLinks;
+			this->lblProfundidadReal->Text = L"Maximum Tree Depth Reached: " + result.maxDepth;
+		}
+		// Muestra el panel de resultados.
 		SwitchPanel(panelResultados);
 	}
 }
 
+// Se ejecuta al hacer clic en el botón "Exportar HTML".
 System::Void MyForm::btnExportar_Click(System::Object^ sender, System::EventArgs^ e) {
+	// Verifica si existe un árbol de análisis para exportar.
 	if (crawler->getRoot() == nullptr) {
 		if (currentCulture == "" || currentCulture == "es") {
 			MessageBox::Show(L"Primero debe realizar un análisis.", L"Árbol no disponible", MessageBoxButtons::OK, MessageBoxIcon::Information);
@@ -99,6 +122,7 @@ System::Void MyForm::btnExportar_Click(System::Object^ sender, System::EventArgs
 		return;
 	}
 
+	// Configura y muestra un diálogo para guardar el archivo.
 	SaveFileDialog^ saveFileDialog = gcnew SaveFileDialog();
 	if (currentCulture == "" || currentCulture == "es") {
 		saveFileDialog->Filter = "HTML File (*.html)|*.html|All files (*.*)|*.*";
@@ -109,6 +133,7 @@ System::Void MyForm::btnExportar_Click(System::Object^ sender, System::EventArgs
 		saveFileDialog->Title = L"Export Navigation Tree as HTML";
 	}
 
+	// Genera un nombre de archivo sugerido basado en la URL analizada.
 	try {
 		Uri^ uri = gcnew Uri(this->txtUrl->Text);
 		String^ host = uri->Host->Replace("www.", "");
@@ -118,13 +143,16 @@ System::Void MyForm::btnExportar_Click(System::Object^ sender, System::EventArgs
 		saveFileDialog->FileName = "Reporte_NexusCrawler.html";
 	}
 
+	// Si el usuario selecciona una ubicación y guarda...
 	if (saveFileDialog->ShowDialog() == System::Windows::Forms::DialogResult::OK) {
 		msclr::interop::marshal_context context;
 		std::string filePath = context.marshal_as<std::string>(saveFileDialog->FileName);
 		std::string analysisUrl = context.marshal_as<std::string>(this->txtUrl->Text);
 		int requestedDepth = static_cast<int>(this->numProfundidad->Value);
 
+		// Llama a la función de DataAccess para generar y guardar el archivo HTML.
 		if (DataAccess::exportTreeToHtml(crawler->getRoot(), filePath, analysisUrl, requestedDepth)) {
+			// Pregunta al usuario si desea abrir el archivo recién creado.
 			if (currentCulture == "" || currentCulture == "es") {
 				System::Windows::Forms::DialogResult openResult = MessageBox::Show(
 					L"El árbol se ha exportado exitosamente como HTML.\n\n¿Desea abrir el archivo ahora?",
@@ -160,53 +188,68 @@ System::Void MyForm::btnExportar_Click(System::Object^ sender, System::EventArgs
 						MessageBox::Show(L"The file could not be opened: " + ex->Message, L"Error opening");
 					}
 				}
-
-				else {
-					MessageBox::Show(L"An error occurred while saving the file.", L"Export Error", MessageBoxButtons::OK, MessageBoxIcon::Error);
-				}
+			}
+		}
+		else {
+			// Muestra un error si la exportación falla.
+			if (currentCulture == "" || currentCulture == "es") {
+				MessageBox::Show(L"Ocurrió un error al guardar el archivo.", L"Error de Exportación", MessageBoxButtons::OK, MessageBoxIcon::Error);
+			}
+			else {
+				MessageBox::Show(L"An error occurred while saving the file.", L"Export Error", MessageBoxButtons::OK, MessageBoxIcon::Error);
 			}
 		}
 	}
 }
 
+// Se ejecuta al hacer clic en el botón "Detectar Enlaces Rotos".
 System::Void MyForm::btnDetectarRotos_Click(System::Object^ sender, System::EventArgs^ e) {
+	// Verifica que exista un análisis previo.
 	if (crawler->getRoot() == nullptr) {
 		if (currentCulture == "" || currentCulture == "es") {
 			MessageBox::Show(L"Primero debe realizar un análisis.", L"Árbol no disponible", MessageBoxButtons::OK, MessageBoxIcon::Information);
-		} else {
+		}
+		else {
 			MessageBox::Show(L"You must first perform an analysis.", L"Tree not available", MessageBoxButtons::OK, MessageBoxIcon::Information);
 		}
 		return;
 	}
+	// Evita iniciar una nueva verificación si ya hay una en curso.
 	if (linkCheckWorker->IsBusy) return;
-	this->grpAcciones->Enabled = false;
+	this->grpAcciones->Enabled = false; // Deshabilita los botones de acción.
 
+	// Actualiza la UI para indicar que la verificación está en progreso.
 	if (currentCulture == "" || currentCulture == "es") {
 		this->lblAccionResultadoTitulo->Text = L"Verificando enlaces rotos...";
 		this->rtbAccionResultado->Text = L"Por favor espere...";
-	} else {
+	}
+	else {
 		this->lblAccionResultadoTitulo->Text = L"Checking broken links...";
 		this->rtbAccionResultado->Text = L"Please wait...";
 	}
+	// Inicia la verificación en un hilo separado.
 	linkCheckWorker->RunWorkerAsync();
 }
 
+// Se ejecuta al hacer clic en el botón "Buscar Palabra Clave".
 System::Void MyForm::btnBuscarPalabra_Click(System::Object^ sender, System::EventArgs^ e) {
 	if (currentCulture == "" || currentCulture == "es") {
-
-
+		// Verifica que exista un análisis previo.
 		if (crawler->getRoot() == nullptr) {
 			MessageBox::Show(L"Primero debe realizar un análisis.", L"Árbol no disponible", MessageBoxButtons::OK, MessageBoxIcon::Information);
 			return;
 		}
+		// Valida que se haya ingresado una palabra clave.
 		if (String::IsNullOrWhiteSpace(txtPalabraClave->Text) || txtPalabraClave->Text == L"Ingrese palabra clave aquí...") {
 			MessageBox::Show(L"Por favor, ingrese una palabra clave para buscar.", L"Entrada Inválida", MessageBoxButtons::OK, MessageBoxIcon::Warning);
 			return;
 		}
+		// Evita iniciar una nueva búsqueda si ya hay una en curso.
 		if (searchWorker->IsBusy) return;
-		this->grpAcciones->Enabled = false;
+		this->grpAcciones->Enabled = false; // Deshabilita los botones de acción.
 		this->lblAccionResultadoTitulo->Text = L"Buscando palabra clave...";
 		this->rtbAccionResultado->Text = L"Por favor espere...";
+		// Prepara los argumentos y ejecuta el worker de búsqueda.
 		SearchArgs^ args = gcnew SearchArgs();
 		args->Keyword = this->txtPalabraClave->Text;
 		searchWorker->RunWorkerAsync(args);
@@ -230,7 +273,9 @@ System::Void MyForm::btnBuscarPalabra_Click(System::Object^ sender, System::Even
 	}
 }
 
+// Tarea en segundo plano para verificar el estado de todos los enlaces.
 System::Void MyForm::linkCheckWorker_DoWork(System::Object^ sender, System::ComponentModel::DoWorkEventArgs^ e) {
+	// Llama al método de la lógica de negocio y convierte el resultado a un tipo gestionado.
 	std::vector<std::string> brokenLinks = crawler->checkAllLinksStatus();
 	List<String^>^ resultList = gcnew List<String^>();
 	for (const auto& link : brokenLinks) {
@@ -239,14 +284,17 @@ System::Void MyForm::linkCheckWorker_DoWork(System::Object^ sender, System::Comp
 	e->Result = resultList;
 }
 
+// Se ejecuta cuando el worker de verificación de enlaces ha completado su tarea.
 System::Void MyForm::linkCheckWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e) {
 	if (currentCulture == "" || currentCulture == "es") {
-		this->grpAcciones->Enabled = true;
+		this->grpAcciones->Enabled = true; // Rehabilita los botones.
+		// Maneja cualquier error.
 		if (e->Error != nullptr) {
 			this->lblAccionResultadoTitulo->Text = L"Error en la Verificación";
 			this->rtbAccionResultado->Text = L"Ocurrió un error al verificar los enlaces.";
 			return;
 		}
+		// Muestra los resultados en el RichTextBox.
 		List<String^>^ brokenLinks = safe_cast<List<String^>^>(e->Result);
 		this->lblAccionResultadoTitulo->Text = L"Resultados de 'Enlaces Rotos':";
 		this->rtbAccionResultado->Clear();
@@ -258,7 +306,7 @@ System::Void MyForm::linkCheckWorker_RunWorkerCompleted(System::Object^ sender, 
 		}
 		else {
 			this->rtbAccionResultado->AppendText("Se encontraron " + brokenLinks->Count + " enlaces rotos:\r\n\r\n");
-			for each (String ^ link in brokenLinks) {
+			for each(String ^ link in brokenLinks) {
 				rtbAccionResultado->SelectionColor = Color::Tomato;
 				rtbAccionResultado->AppendText("[ROTO] ");
 				rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
@@ -284,22 +332,24 @@ System::Void MyForm::linkCheckWorker_RunWorkerCompleted(System::Object^ sender, 
 		}
 		else {
 			this->rtbAccionResultado->AppendText("Found " + brokenLinks->Count + " broken links:\r\n\r\n");
-			for each (String ^ link in brokenLinks) {
+			for each(String ^ link in brokenLinks) {
 				rtbAccionResultado->SelectionColor = Color::Tomato;
 				rtbAccionResultado->AppendText("[BROKEN] ");
 				rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
 				rtbAccionResultado->AppendText(link + "\r\n");
 			}
 		}
-
 	}
 }
 
+// Tarea en segundo plano para buscar la ruta más corta a una palabra clave.
 System::Void MyForm::searchWorker_DoWork(System::Object^ sender, System::ComponentModel::DoWorkEventArgs^ e) {
 	SearchArgs^ args = static_cast<SearchArgs^>(e->Argument);
 	msclr::interop::marshal_context context;
 	std::string keyword = context.marshal_as<std::string>(args->Keyword);
+	// Llama al método de la lógica de negocio.
 	PathResult result_nativa = crawler->findShortestPathToKeyword(keyword);
+	// Convierte el resultado nativo a un tipo gestionado para pasarlo a la UI.
 	PathResultManaged^ result_gestionado = gcnew PathResultManaged();
 	result_gestionado->found = result_nativa.found;
 	result_gestionado->path = gcnew List<String^>();
@@ -311,8 +361,10 @@ System::Void MyForm::searchWorker_DoWork(System::Object^ sender, System::Compone
 	e->Result = result_gestionado;
 }
 
+// Se ejecuta cuando el worker de búsqueda ha completado su tarea.
 System::Void MyForm::searchWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e) {
-	this->grpAcciones->Enabled = true;
+	this->grpAcciones->Enabled = true; // Rehabilita los botones.
+	// Maneja cualquier error.
 	if (e->Error != nullptr) {
 		if (currentCulture == "" || currentCulture == "es") {
 			this->lblAccionResultadoTitulo->Text = L"Error en la Búsqueda";
@@ -324,6 +376,7 @@ System::Void MyForm::searchWorker_RunWorkerCompleted(System::Object^ sender, Sys
 		}
 		return;
 	}
+	// Muestra los resultados de la búsqueda en el RichTextBox.
 	PathResultManaged^ result = safe_cast<PathResultManaged^>(e->Result);
 	if (currentCulture == "" || currentCulture == "es") {
 		this->lblAccionResultadoTitulo->Text = "Resultados de Búsqueda para '" + txtPalabraClave->Text + "':";
@@ -335,6 +388,7 @@ System::Void MyForm::searchWorker_RunWorkerCompleted(System::Object^ sender, Sys
 
 	this->rtbAccionResultado->Clear();
 	if (!result->found) {
+		// Informa si la palabra clave no fue encontrada.
 		if (currentCulture == "" || currentCulture == "es") {
 			this->rtbAccionResultado->SelectionColor = Color::Orange;
 			this->rtbAccionResultado->AppendText("[NO ENCONTRADO] ");
@@ -347,30 +401,31 @@ System::Void MyForm::searchWorker_RunWorkerCompleted(System::Object^ sender, Sys
 			this->rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
 			this->rtbAccionResultado->AppendText(L"The keyword was not found in any URL in the tree.");
 		}
-
 	}
 	else {
+		// Muestra la ruta más corta si se encontró la palabra clave.
 		int clicks = result->path->Count - 1;
 		this->rtbAccionResultado->SelectionColor = Color::LightGreen;
-		if(currentCulture == "" || currentCulture == "es") {
+		if (currentCulture == "" || currentCulture == "es") {
 			this->rtbAccionResultado->AppendText(L"[ÉXITO] ");
 			this->rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
 			this->rtbAccionResultado->AppendText("Encontrado en " + clicks + " clic(s).\r\n\r\n");
 			this->rtbAccionResultado->AppendText(L"Ruta más corta:\r\n");
-		} else {
+		}
+		else {
 			this->rtbAccionResultado->AppendText(L"[SUCCESS] ");
 			this->rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
 			this->rtbAccionResultado->AppendText("Found in " + clicks + " clic(s).\r\n\r\n");
 			this->rtbAccionResultado->AppendText(L"Shorter route:\r\n");
 		}
-		
-
+		// Imprime la ruta con indentación para mayor claridad.
 		for (int i = 0; i < result->path->Count; ++i) {
 			rtbAccionResultado->AppendText((gcnew String(L' ', i * 2)) + "-> " + result->path[i] + "\r\n");
 		}
 	}
 }
 
+// Permite abrir los enlaces del RichTextBox en el navegador por defecto.
 System::Void MyForm::rtbAccionResultado_LinkClicked(System::Object^ sender, System::Windows::Forms::LinkClickedEventArgs^ e) {
 	try {
 		System::Diagnostics::Process::Start(e->LinkText);
@@ -380,9 +435,11 @@ System::Void MyForm::rtbAccionResultado_LinkClicked(System::Object^ sender, Syst
 	}
 }
 
+// --- Manejadores para el Placeholder del TextBox de Palabra Clave ---
+
+// Limpia el texto del placeholder cuando el usuario hace foco en el cuadro de texto.
 System::Void MyForm::txtPalabraClave_Enter(System::Object^ sender, System::EventArgs^ e) {
 	if (currentCulture == "" || currentCulture == "es") {
-
 		if (this->txtPalabraClave->Text == L"Ingrese palabra clave aquí...") {
 			this->txtPalabraClave->Text = "";
 			this->txtPalabraClave->ForeColor = Color::White;
@@ -396,6 +453,7 @@ System::Void MyForm::txtPalabraClave_Enter(System::Object^ sender, System::Event
 	}
 }
 
+// Restaura el texto del placeholder si el cuadro de texto queda vacío.
 System::Void MyForm::txtPalabraClave_Leave(System::Object^ sender, System::EventArgs^ e) {
 	if (currentCulture == "" || currentCulture == "es") {
 		if (String::IsNullOrWhiteSpace(this->txtPalabraClave->Text)) {
@@ -411,6 +469,9 @@ System::Void MyForm::txtPalabraClave_Leave(System::Object^ sender, System::Event
 	}
 }
 
+// --- Métodos Auxiliares de la UI ---
+
+// Gestiona la visibilidad de los paneles principales (Inicio, Carga, Resultados).
 void MyForm::SwitchPanel(Panel^ panelToShow) {
 	this->panelInicio->Visible = false;
 	this->panelCarga->Visible = false;
@@ -418,6 +479,7 @@ void MyForm::SwitchPanel(Panel^ panelToShow) {
 	panelToShow->Visible = true;
 	panelToShow->BringToFront();
 
+	// Mueve el botón de salir para que sea visible en los paneles de inicio y resultados.
 	if (panelToShow == panelInicio || panelToShow == panelResultados) {
 		this->panelBotonSalir->Parent = panelToShow;
 		this->panelBotonSalir->Visible = true;
@@ -428,9 +490,10 @@ void MyForm::SwitchPanel(Panel^ panelToShow) {
 	}
 }
 
+// Aplica recursivamente los recursos de idioma a todos los controles del formulario.
 System::Void NexusCrawlerApp::MyForm::ApplyResourcesToControls(System::Windows::Forms::Control::ControlCollection^ controls, System::ComponentModel::ComponentResourceManager^ resources)
 {
-	for each (System::Windows::Forms::Control ^ control in controls) {
+	for each(System::Windows::Forms::Control ^ control in controls) {
 		resources->ApplyResources(control, control->Name);
 		if (control->HasChildren) {
 			ApplyResourcesToControls(control->Controls, resources);
@@ -438,6 +501,9 @@ System::Void NexusCrawlerApp::MyForm::ApplyResourcesToControls(System::Windows::
 	}
 }
 
+// --- Manejadores de Eventos de Dibujo Personalizado (Paint) ---
+
+// Dibuja el fondo con gradiente para el botón principal de análisis.
 System::Void MyForm::panelBotonAnalisis_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e) {
 	Graphics^ g = e->Graphics;
 	System::Drawing::Rectangle rect = (cli::safe_cast<Panel^>(sender))->ClientRectangle;
@@ -446,6 +512,7 @@ System::Void MyForm::panelBotonAnalisis_Paint(System::Object^ sender, System::Wi
 	delete brush;
 }
 
+// Dibuja el fondo con gradiente y bordes redondeados para los botones de acción.
 System::Void MyForm::panelAccion_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e) {
 	Graphics^ g = e->Graphics;
 	g->SmoothingMode = SmoothingMode::AntiAlias;
@@ -453,20 +520,24 @@ System::Void MyForm::panelAccion_Paint(System::Object^ sender, System::Windows::
 	System::Drawing::Rectangle rect = panel->ClientRectangle;
 	GraphicsPath^ path = gcnew GraphicsPath();
 	int cornerRadius = 15;
+	// Crea una ruta con esquinas redondeadas.
 	path->AddArc(rect.X, rect.Y, cornerRadius, cornerRadius, 180, 90);
 	path->AddArc(rect.Right - cornerRadius, rect.Y, cornerRadius, cornerRadius, 270, 90);
 	path->AddArc(rect.Right - cornerRadius, rect.Bottom - cornerRadius, cornerRadius, cornerRadius, 0, 90);
 	path->AddArc(rect.X, rect.Bottom - cornerRadius, cornerRadius, cornerRadius, 90, 90);
 	path->CloseFigure();
-	panel->Region = gcnew System::Drawing::Region(path);
+	panel->Region = gcnew System::Drawing::Region(path); // Aplica la región redondeada.
+	// Rellena el panel con un gradiente.
 	LinearGradientBrush^ brush = gcnew LinearGradientBrush(rect, Color::FromArgb(136, 95, 255), Color::FromArgb(95, 50, 230), LinearGradientMode::Vertical);
 	g->FillPath(brush, path);
 	delete brush;
 	delete path;
 }
 
+// Se ejecuta al hacer clic en el botón "Nuevo Análisis".
 System::Void MyForm::btnNuevoAnalisis_Click(System::Object^ sender, System::EventArgs^ e) {
 	if (currentCulture == "" || currentCulture == "es") {
+		// Pide confirmación al usuario antes de borrar los resultados actuales.
 		System::Windows::Forms::DialogResult confirmResult = MessageBox::Show(
 			L"¿Está seguro de que desea iniciar un nuevo análisis? Se perderán los resultados actuales.",
 			L"Confirmar Nuevo Análisis",
@@ -474,6 +545,7 @@ System::Void MyForm::btnNuevoAnalisis_Click(System::Object^ sender, System::Even
 			MessageBoxIcon::Question);
 
 		if (confirmResult == System::Windows::Forms::DialogResult::Yes) {
+			// Limpia los campos de resultados y regresa al panel de inicio.
 			this->rtbAccionResultado->Clear();
 			this->lblAccionResultadoTitulo->Text = L"Resultados de la Acción:";
 			this->txtPalabraClave->Text = L"Ingrese palabra clave aquí...";
@@ -498,10 +570,12 @@ System::Void MyForm::btnNuevoAnalisis_Click(System::Object^ sender, System::Even
 	}
 }
 
+// Cierra la aplicación al hacer clic en el botón de salir.
 System::Void MyForm::panelBotonSalir_Click(System::Object^ sender, System::EventArgs^ e) {
 	this->Close();
 }
 
+// Dibuja el botón de salir con un efecto de portal y un icono.
 System::Void MyForm::panelBotonSalir_Paint(System::Object^ sender, System::Windows::Forms::PaintEventArgs^ e) {
 	Graphics^ g = e->Graphics;
 	g->SmoothingMode = SmoothingMode::AntiAlias;
@@ -511,6 +585,7 @@ System::Void MyForm::panelBotonSalir_Paint(System::Object^ sender, System::Windo
 	GraphicsPath^ portalPath = gcnew GraphicsPath();
 	portalPath->AddEllipse(rect);
 
+	// Cambia los colores del gradiente según si el mouse está sobre el botón.
 	Color centerColor = isMouseOverExit ? Color::FromArgb(220, 200, 255) : Color::FromArgb(136, 95, 255);
 	Color outerColor = isMouseOverExit ? Color::FromArgb(136, 95, 255) : Color::FromArgb(28, 27, 45);
 
@@ -522,6 +597,7 @@ System::Void MyForm::panelBotonSalir_Paint(System::Object^ sender, System::Windo
 
 	g->FillEllipse(portalBrush, rect);
 
+	// Dibuja el icono de "apagado" en el centro del botón.
 	Pen^ iconPen = gcnew Pen(Color::White, 2);
 	float iconSize = 20.0f;
 	RectangleF iconRect = RectangleF((rect.Width - iconSize) / 2.0f, (rect.Height - iconSize) / 2.0f, iconSize, iconSize);
@@ -534,46 +610,41 @@ System::Void MyForm::panelBotonSalir_Paint(System::Object^ sender, System::Windo
 	delete iconPen;
 }
 
+// --- Manejadores de Eventos de Mouse para el Botón de Salir ---
+
+// Activa el flag de hover y redibuja el botón cuando el mouse entra.
 System::Void MyForm::panelBotonSalir_MouseEnter(System::Object^ sender, System::EventArgs^ e) {
 	isMouseOverExit = true;
 	(cli::safe_cast<Panel^>(sender))->Invalidate();
 }
 
+// Desactiva el flag de hover y redibuja el botón cuando el mouse sale.
 System::Void MyForm::panelBotonSalir_MouseLeave(System::Object^ sender, System::EventArgs^ e) {
 	isMouseOverExit = false;
 	(cli::safe_cast<Panel^>(sender))->Invalidate();
 }
 
-	   // Función auxiliar para aplicar los recursos a los controles anidados (dentro de GroupBox, Panels, etc.)
-	   void ApplyResourcesToControls(System::Windows::Forms::Control::ControlCollection^ controls, System::ComponentModel::ComponentResourceManager^ resources) {
-		   for each (System::Windows::Forms::Control ^ control in controls) {
-			   resources->ApplyResources(control, control->Name);
-			   if (control->HasChildren) {
-				   ApplyResourcesToControls(control->Controls, resources);
-			   }
-		   }
-	   }
+// Función auxiliar para aplicar los recursos a los controles anidados (dentro de GroupBox, Panels, etc.)
+void ApplyResourcesToControls(System::Windows::Forms::Control::ControlCollection^ controls, System::ComponentModel::ComponentResourceManager^ resources) {
+	for each(System::Windows::Forms::Control ^ control in controls) {
+		resources->ApplyResources(control, control->Name);
+		if (control->HasChildren) {
+			ApplyResourcesToControls(control->Controls, resources);
+		}
+	}
+}
 
 #pragma region Windows Form Designer generated code
+// Método generado por el diseñador de Windows Forms para inicializar todos los componentes de la UI.
+// Contiene la creación, configuración de propiedades y disposición de todos los controles.
 void MyForm::InitializeComponent(void)
 {
-	
-	// 2. Aplicar los recursos a todo el formulario y sus controles hijos.
 	try
 	{
-		// 1. Usamos el ResourceManager base para ser más explícitos.
-		//    Le decimos el nombre exacto del recurso y en qué ensamblado buscar.
 		System::Resources::ResourceManager^ resources =
 			gcnew System::Resources::ResourceManager("NexusCrawlerApp.MyForm", MyForm::typeid->Assembly);
 
-		// 2. Aplicar los recursos (tu código para esto ya era correcto).
-		// NOTA: ApplyResources es un método de ComponentResourceManager, así que lo haremos manualmente.
 		this->Text = resources->GetString("$this.Text");
-		// ... tendrías que aplicar cada propiedad manualmente.
-
-		// ----- VAMOS A HACERLO MÁS FÁCIL -----
-		// Volvamos a ComponentResourceManager pero asegurémonos de que todo lo demás esté perfecto.
-		// La causa más probable sigue siendo una configuración del proyecto.
 	}
 	catch (System::Exception^ ex)
 	{
@@ -721,13 +792,13 @@ void MyForm::InitializeComponent(void)
 	this->numProfundidad->TabIndex = 4;
 	this->numProfundidad->Value = System::Decimal(gcnew cli::array< System::Int32 >(4) { 1, 0, 0, 0 });
 	// 
-    // chkIncludeSubdomains
-    // 
+	// chkIncludeSubdomains
+	// 
 	this->chkIncludeSubdomains->AutoSize = true;
 	this->chkIncludeSubdomains->Checked = true; // Por defecto activado
 	this->chkIncludeSubdomains->CheckState = System::Windows::Forms::CheckState::Checked;
 	this->chkIncludeSubdomains->ForeColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(200)), static_cast<System::Int32>(static_cast<System::Byte>(200)), static_cast<System::Int32>(static_cast<System::Byte>(220)));
-	this->chkIncludeSubdomains->Location = System::Drawing::Point(44, 200); 
+	this->chkIncludeSubdomains->Location = System::Drawing::Point(44, 200);
 	this->chkIncludeSubdomains->Name = L"chkIncludeSubdomains";
 	this->chkIncludeSubdomains->Size = System::Drawing::Size(180, 24);
 	this->chkIncludeSubdomains->TabIndex = 5;
@@ -1120,6 +1191,7 @@ void MyForm::InitializeComponent(void)
 	// 
 	// MyForm
 	// 
+	this->Icon = gcnew System::Drawing::Icon(Application::StartupPath + L"\\icono\\grafoicono.ico");
 	this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::None;
 	this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(28)), static_cast<System::Int32>(static_cast<System::Byte>(27)), static_cast<System::Int32>(static_cast<System::Byte>(45)));
 	this->ClientSize = System::Drawing::Size(900, 700);
@@ -1152,15 +1224,13 @@ void MyForm::InitializeComponent(void)
 	this->panelBtnBuscarPalabra->ResumeLayout(false);
 	this->ResumeLayout(false);
 
+	// Agregar los eventos de los Workers
 	this->crawlWorker->DoWork += gcnew System::ComponentModel::DoWorkEventHandler(this, &MyForm::crawlWorker_DoWork);
 	this->crawlWorker->RunWorkerCompleted += gcnew System::ComponentModel::RunWorkerCompletedEventHandler(this, &MyForm::crawlWorker_RunWorkerCompleted);
 	this->linkCheckWorker->DoWork += gcnew System::ComponentModel::DoWorkEventHandler(this, &MyForm::linkCheckWorker_DoWork);
 	this->linkCheckWorker->RunWorkerCompleted += gcnew System::ComponentModel::RunWorkerCompletedEventHandler(this, &MyForm::linkCheckWorker_RunWorkerCompleted);
 	this->searchWorker->DoWork += gcnew System::ComponentModel::DoWorkEventHandler(this, &MyForm::searchWorker_DoWork);
 	this->searchWorker->RunWorkerCompleted += gcnew System::ComponentModel::RunWorkerCompletedEventHandler(this, &MyForm::searchWorker_RunWorkerCompleted);
-	// 1. Cargar los recursos para la cultura detectada.
 	System::ComponentModel::ComponentResourceManager^ resources = gcnew System::ComponentModel::ComponentResourceManager(MyForm::typeid);
-
-	
 }
 #pragma endregion

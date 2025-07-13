@@ -1,19 +1,20 @@
-#include "MyForm.h" // Incluimos el diseño de nuestra ventana
+#include "MyForm.h" 
 
 using namespace System;
 using namespace System::Windows::Forms;
 
-// La directiva [STAThread] es necesaria para que los componentes de Windows Forms funcionen correctamente.
+// Atributo STAThread: Indica que el modelo de subprocesos COM de la aplicación es
+// Single-Threaded Apartment. Es un requisito para las aplicaciones de Windows Forms.
 [STAThreadAttribute]
 int main(array<String^>^ args)
 {
-    // Habilita los estilos visuales de Windows para que la aplicación no se vea como de Windows 98.
+    // Habilita los estilos visuales modernos de Windows para los controles.
     Application::EnableVisualStyles();
+    // Establece el motor de renderizado de texto predeterminado a GDI+ (más moderno).
     Application::SetCompatibleTextRenderingDefault(false);
 
-    // Esta es la línea clave:
-    // 1. Creamos una instancia de nuestro formulario (NexusCrawlerApp::MyForm).
-    // 2. Le pasamos el control a Application::Run(), que la muestra en pantalla y espera eventos (clics, etc.).
+    // Crea una instancia del formulario principal y lo ejecuta,
+    // iniciando así el bucle de mensajes de la aplicación.
     Application::Run(gcnew NexusCrawlerApp::MyForm());
 
     return 0;
