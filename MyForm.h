@@ -4,6 +4,7 @@
 #pragma comment(lib, "Gdi32.lib")
 #include <msclr/marshal_cppstd.h>
 #include <vector>
+#include <string>
 
 // Forward declarations para tipos nativos
 class NavigationTree;
@@ -11,7 +12,7 @@ struct AnalysisResult;
 struct PathResult;
 
 namespace NexusCrawlerApp {
-
+	
 	using namespace System;
 	using namespace System::ComponentModel;
 	using namespace System::Collections;
@@ -19,6 +20,10 @@ namespace NexusCrawlerApp {
 	using namespace System::Windows::Forms;
 	using namespace System::Drawing;
 	using namespace System::Drawing::Drawing2D;
+
+
+    // Cambiar la declaración de la variable estática para que sea adecuada  
+   
 
 	public ref struct CrawlArgs {
 		String^ Url;
@@ -39,10 +44,13 @@ namespace NexusCrawlerApp {
 	{
 	public:
 		MyForm(void);
+		static System::String^ currentCulture = "";
+
 	protected:
 		~MyForm();
 
-	private:
+        private:  
+       
 		NavigationTree* crawler;
 		BackgroundWorker^ crawlWorker;
 		BackgroundWorker^ linkCheckWorker;
@@ -125,9 +133,11 @@ namespace NexusCrawlerApp {
 			String^ culture = "";
 			if (this->cmbLanguage->SelectedItem->ToString() == "Español") {
 				culture = "es-VE";
+				currentCulture = "es";
 			}
 			else if (this->cmbLanguage->SelectedItem->ToString() == "English") {
 				culture = "en-US";
+				currentCulture = "en";
 			}
 
 			// Cambia la "cultura" del hilo actual de la interfaz

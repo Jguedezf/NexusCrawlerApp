@@ -8,6 +8,7 @@
 
 using namespace NexusCrawlerApp;
 
+
 MyForm::MyForm(void)
 {
 	InitializeComponent();
@@ -33,18 +34,25 @@ MyForm::~MyForm()
 // --- Manejadores de Eventos ---
 
 System::Void MyForm::btnIniciarAnalisis_Click(System::Object^ sender, System::EventArgs^ e) {
-	if (String::IsNullOrWhiteSpace(this->txtUrl->Text)) {
-		MessageBox::Show(L"Por favor, ingrese una URL.", L"Error");
-		return;
-	}
-	if (this->crawlWorker->IsBusy) return;
-	SwitchPanel(panelCarga);
-	CrawlArgs^ args = gcnew CrawlArgs();
-	args->Url = this->txtUrl->Text;
-	args->Depth = static_cast<int>(this->numProfundidad->Value);
-	args->IncludeSubdomains = this->chkIncludeSubdomains->Checked; 
+	
+		if (String::IsNullOrWhiteSpace(this->txtUrl->Text)) {
+			if (currentCulture == "" || currentCulture == "es") {
+				MessageBox::Show(L"Por favor, ingrese una URL.", L"Error");
+			}
+			else {
+				MessageBox::Show(L"Please enter a URL.", L"Error");
+			}
+			return;
+		}
+		if (this->crawlWorker->IsBusy) return;
+		SwitchPanel(panelCarga);
+		CrawlArgs^ args = gcnew CrawlArgs();
+		args->Url = this->txtUrl->Text;
+		args->Depth = static_cast<int>(this->numProfundidad->Value);
+		args->IncludeSubdomains = this->chkIncludeSubdomains->Checked;
 
-	this->crawlWorker->RunWorkerAsync(args);
+		this->crawlWorker->RunWorkerAsync(args);
+	
 }
 
 System::Void MyForm::crawlWorker_DoWork(System::Object^ sender, System::ComponentModel::DoWorkEventArgs^ e) {
@@ -59,30 +67,47 @@ System::Void MyForm::crawlWorker_DoWork(System::Object^ sender, System::Componen
 
 System::Void MyForm::crawlWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e) {
 	if (e->Error != nullptr) {
-		MessageBox::Show(L"Ocurrió un error durante el análisis: " + e->Error->Message, L"Error");
+		if (currentCulture == "" || currentCulture == "es") {
+			MessageBox::Show(L"Ocurrió un error durante el análisis: " + e->Error->Message, L"Error");
+		}
+		else {
+			MessageBox::Show(L"An error occurred during the analysis: " + e->Error->Message, L"Error");
+		}
 		SwitchPanel(panelInicio);
 	}
 	else {
 		AnalysisResult result = crawler->getAnalysisResult();
-		this->lblUrlAnalizada->Text = "URL Raíz Analizada: " + this->txtUrl->Text;
-		this->lblProfundidadSolicitada->Text = L"Profundidad de Análisis Solicitada: " + this->numProfundidad->Value.ToString();
-		this->lblTotalNodos->Text = L"Total de Nodos/Páginas Descubiertas: " + result.totalNodes;
-		this->lblEnlacesInternos->Text = L"Enlaces Internos Encontrados: " + result.internalLinks;
-		this->lblEnlacesExternos->Text = L"Enlaces Externos Encontrados: " + result.externalLinks;
-		this->lblProfundidadReal->Text = L"Profundidad Máxima Real del Árbol: " + result.maxDepth;
+
+		this->lblUrlAnalizada->Text += this->txtUrl->Text;
+		this->lblProfundidadSolicitada->Text += this->numProfundidad->Value.ToString();
+		this->lblTotalNodos->Text += result.totalNodes;
+		this->lblEnlacesInternos->Text += result.internalLinks;
+		this->lblEnlacesExternos->Text += result.externalLinks;
+		this->lblProfundidadReal->Text += result.maxDepth;
 		SwitchPanel(panelResultados);
 	}
 }
 
 System::Void MyForm::btnExportar_Click(System::Object^ sender, System::EventArgs^ e) {
 	if (crawler->getRoot() == nullptr) {
-		MessageBox::Show(L"Primero debe realizar un análisis.", L"Árbol no disponible", MessageBoxButtons::OK, MessageBoxIcon::Information);
+		if (currentCulture == "" || currentCulture == "es") {
+			MessageBox::Show(L"Primero debe realizar un análisis.", L"Árbol no disponible", MessageBoxButtons::OK, MessageBoxIcon::Information);
+		}
+		else {
+			MessageBox::Show(L"You must first perform an analysis.", L"Tree not available", MessageBoxButtons::OK, MessageBoxIcon::Information);
+		}
 		return;
 	}
 
 	SaveFileDialog^ saveFileDialog = gcnew SaveFileDialog();
-	saveFileDialog->Filter = "Archivo HTML (*.html)|*.html|Todos los archivos (*.*)|*.*";
-	saveFileDialog->Title = L"Exportar Árbol de Navegación como HTML";
+	if (currentCulture == "" || currentCulture == "es") {
+		saveFileDialog->Filter = "HTML File (*.html)|*.html|All files (*.*)|*.*";
+		saveFileDialog->Title = L"Exportar Árbol de Navegación como HTML";
+	}
+	else {
+		saveFileDialog->Filter = "HTML file (*.html)|*.html|All files (*.*)|*.*";
+		saveFileDialog->Title = L"Export Navigation Tree as HTML";
+	}
 
 	try {
 		Uri^ uri = gcnew Uri(this->txtUrl->Text);
@@ -100,55 +125,109 @@ System::Void MyForm::btnExportar_Click(System::Object^ sender, System::EventArgs
 		int requestedDepth = static_cast<int>(this->numProfundidad->Value);
 
 		if (DataAccess::exportTreeToHtml(crawler->getRoot(), filePath, analysisUrl, requestedDepth)) {
-			System::Windows::Forms::DialogResult openResult = MessageBox::Show(
-				L"El árbol se ha exportado exitosamente como HTML.\n\n¿Desea abrir el archivo ahora?",
-				L"Exportación Exitosa",
-				MessageBoxButtons::YesNo,
-				MessageBoxIcon::Information);
+			if (currentCulture == "" || currentCulture == "es") {
+				System::Windows::Forms::DialogResult openResult = MessageBox::Show(
+					L"El árbol se ha exportado exitosamente como HTML.\n\n¿Desea abrir el archivo ahora?",
+					L"Exportación Exitosa",
+					MessageBoxButtons::YesNo,
+					MessageBoxIcon::Information);
 
-			if (openResult == System::Windows::Forms::DialogResult::Yes) {
-				try {
-					System::Diagnostics::Process::Start(saveFileDialog->FileName);
+				if (openResult == System::Windows::Forms::DialogResult::Yes) {
+					try {
+						System::Diagnostics::Process::Start(saveFileDialog->FileName);
+					}
+					catch (Exception^ ex) {
+						MessageBox::Show(L"No se pudo abrir el archivo: " + ex->Message, L"Error al abrir");
+					}
 				}
-				catch (Exception^ ex) {
-					MessageBox::Show(L"No se pudo abrir el archivo: " + ex->Message, L"Error al abrir");
+
+				else {
+					MessageBox::Show(L"Ocurrió un error al guardar el archivo.", L"Error de Exportación", MessageBoxButtons::OK, MessageBoxIcon::Error);
 				}
 			}
-		}
-		else {
-			MessageBox::Show(L"Ocurrió un error al guardar el archivo.", L"Error de Exportación", MessageBoxButtons::OK, MessageBoxIcon::Error);
+			else {
+				System::Windows::Forms::DialogResult openResult = MessageBox::Show(
+					L"The tree has been successfully exported as HTML.\n\n Do you want to open the file now?",
+					L"Successful Export",
+					MessageBoxButtons::YesNo,
+					MessageBoxIcon::Information);
+
+				if (openResult == System::Windows::Forms::DialogResult::Yes) {
+					try {
+						System::Diagnostics::Process::Start(saveFileDialog->FileName);
+					}
+					catch (Exception^ ex) {
+						MessageBox::Show(L"The file could not be opened: " + ex->Message, L"Error opening");
+					}
+				}
+
+				else {
+					MessageBox::Show(L"An error occurred while saving the file.", L"Export Error", MessageBoxButtons::OK, MessageBoxIcon::Error);
+				}
+			}
 		}
 	}
 }
 
 System::Void MyForm::btnDetectarRotos_Click(System::Object^ sender, System::EventArgs^ e) {
 	if (crawler->getRoot() == nullptr) {
-		MessageBox::Show(L"Primero debe realizar un análisis.", L"Árbol no disponible", MessageBoxButtons::OK, MessageBoxIcon::Information);
+		if (currentCulture == "" || currentCulture == "es") {
+			MessageBox::Show(L"Primero debe realizar un análisis.", L"Árbol no disponible", MessageBoxButtons::OK, MessageBoxIcon::Information);
+		} else {
+			MessageBox::Show(L"You must first perform an analysis.", L"Tree not available", MessageBoxButtons::OK, MessageBoxIcon::Information);
+		}
 		return;
 	}
 	if (linkCheckWorker->IsBusy) return;
 	this->grpAcciones->Enabled = false;
-	this->lblAccionResultadoTitulo->Text = L"Verificando enlaces...";
-	this->rtbAccionResultado->Text = L"Por favor espere...";
+
+	if (currentCulture == "" || currentCulture == "es") {
+		this->lblAccionResultadoTitulo->Text = L"Verificando enlaces rotos...";
+		this->rtbAccionResultado->Text = L"Por favor espere...";
+	} else {
+		this->lblAccionResultadoTitulo->Text = L"Checking broken links...";
+		this->rtbAccionResultado->Text = L"Please wait...";
+	}
 	linkCheckWorker->RunWorkerAsync();
 }
 
 System::Void MyForm::btnBuscarPalabra_Click(System::Object^ sender, System::EventArgs^ e) {
-	if (crawler->getRoot() == nullptr) {
-		MessageBox::Show(L"Primero debe realizar un análisis.", L"Árbol no disponible", MessageBoxButtons::OK, MessageBoxIcon::Information);
-		return;
+	if (currentCulture == "" || currentCulture == "es") {
+
+
+		if (crawler->getRoot() == nullptr) {
+			MessageBox::Show(L"Primero debe realizar un análisis.", L"Árbol no disponible", MessageBoxButtons::OK, MessageBoxIcon::Information);
+			return;
+		}
+		if (String::IsNullOrWhiteSpace(txtPalabraClave->Text) || txtPalabraClave->Text == L"Ingrese palabra clave aquí...") {
+			MessageBox::Show(L"Por favor, ingrese una palabra clave para buscar.", L"Entrada Inválida", MessageBoxButtons::OK, MessageBoxIcon::Warning);
+			return;
+		}
+		if (searchWorker->IsBusy) return;
+		this->grpAcciones->Enabled = false;
+		this->lblAccionResultadoTitulo->Text = L"Buscando palabra clave...";
+		this->rtbAccionResultado->Text = L"Por favor espere...";
+		SearchArgs^ args = gcnew SearchArgs();
+		args->Keyword = this->txtPalabraClave->Text;
+		searchWorker->RunWorkerAsync(args);
 	}
-	if (String::IsNullOrWhiteSpace(txtPalabraClave->Text) || txtPalabraClave->Text == L"Ingrese palabra clave aquí...") {
-		MessageBox::Show(L"Por favor, ingrese una palabra clave para buscar.", L"Entrada Inválida", MessageBoxButtons::OK, MessageBoxIcon::Warning);
-		return;
+	else {
+		if (crawler->getRoot() == nullptr) {
+			MessageBox::Show(L"You must first perform an analysis.", L"Tree not available", MessageBoxButtons::OK, MessageBoxIcon::Information);
+			return;
+		}
+		if (String::IsNullOrWhiteSpace(txtPalabraClave->Text) || txtPalabraClave->Text == L"Enter keyword here...") {
+			MessageBox::Show(L"Please enter a keyword to search.", L"Invalid Input", MessageBoxButtons::OK, MessageBoxIcon::Warning);
+			return;
+		}
+		if (searchWorker->IsBusy) return;
+		this->grpAcciones->Enabled = false;
+		this->lblAccionResultadoTitulo->Text = L"Searching for keyword...";
+		this->rtbAccionResultado->Text = L"Please wait...";
+		SearchArgs^ args = gcnew SearchArgs();
+		args->Keyword = this->txtPalabraClave->Text;
+		searchWorker->RunWorkerAsync(args);
 	}
-	if (searchWorker->IsBusy) return;
-	this->grpAcciones->Enabled = false;
-	this->lblAccionResultadoTitulo->Text = L"Buscando palabra clave...";
-	this->rtbAccionResultado->Text = L"Por favor espere...";
-	SearchArgs^ args = gcnew SearchArgs();
-	args->Keyword = this->txtPalabraClave->Text;
-	searchWorker->RunWorkerAsync(args);
 }
 
 System::Void MyForm::linkCheckWorker_DoWork(System::Object^ sender, System::ComponentModel::DoWorkEventArgs^ e) {
@@ -161,29 +240,58 @@ System::Void MyForm::linkCheckWorker_DoWork(System::Object^ sender, System::Comp
 }
 
 System::Void MyForm::linkCheckWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e) {
-	this->grpAcciones->Enabled = true;
-	if (e->Error != nullptr) {
-		this->lblAccionResultadoTitulo->Text = L"Error en la Verificación";
-		this->rtbAccionResultado->Text = L"Ocurrió un error al verificar los enlaces.";
-		return;
-	}
-	List<String^>^ brokenLinks = safe_cast<List<String^>^>(e->Result);
-	this->lblAccionResultadoTitulo->Text = L"Resultados de 'Enlaces Rotos':";
-	this->rtbAccionResultado->Clear();
-	if (brokenLinks->Count == 0) {
-		this->rtbAccionResultado->SelectionColor = Color::LightGreen;
-		this->rtbAccionResultado->AppendText("[OK] ");
-		this->rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
-		this->rtbAccionResultado->AppendText(L"¡Felicidades! No se encontraron enlaces rotos.");
+	if (currentCulture == "" || currentCulture == "es") {
+		this->grpAcciones->Enabled = true;
+		if (e->Error != nullptr) {
+			this->lblAccionResultadoTitulo->Text = L"Error en la Verificación";
+			this->rtbAccionResultado->Text = L"Ocurrió un error al verificar los enlaces.";
+			return;
+		}
+		List<String^>^ brokenLinks = safe_cast<List<String^>^>(e->Result);
+		this->lblAccionResultadoTitulo->Text = L"Resultados de 'Enlaces Rotos':";
+		this->rtbAccionResultado->Clear();
+		if (brokenLinks->Count == 0) {
+			this->rtbAccionResultado->SelectionColor = Color::LightGreen;
+			this->rtbAccionResultado->AppendText("[OK] ");
+			this->rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
+			this->rtbAccionResultado->AppendText(L"¡Felicidades! No se encontraron enlaces rotos.");
+		}
+		else {
+			this->rtbAccionResultado->AppendText("Se encontraron " + brokenLinks->Count + " enlaces rotos:\r\n\r\n");
+			for each (String ^ link in brokenLinks) {
+				rtbAccionResultado->SelectionColor = Color::Tomato;
+				rtbAccionResultado->AppendText("[ROTO] ");
+				rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
+				rtbAccionResultado->AppendText(link + "\r\n");
+			}
+		}
 	}
 	else {
-		this->rtbAccionResultado->AppendText("Se encontraron " + brokenLinks->Count + " enlaces rotos:\r\n\r\n");
-		for each (String ^ link in brokenLinks) {
-			rtbAccionResultado->SelectionColor = Color::Tomato;
-			rtbAccionResultado->AppendText("[ROTO] ");
-			rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
-			rtbAccionResultado->AppendText(link + "\r\n");
+		this->grpAcciones->Enabled = true;
+		if (e->Error != nullptr) {
+			this->lblAccionResultadoTitulo->Text = L"Verification Error";
+			this->rtbAccionResultado->Text = L"An error occurred while verifying the links.";
+			return;
 		}
+		List<String^>^ brokenLinks = safe_cast<List<String^>^>(e->Result);
+		this->lblAccionResultadoTitulo->Text = L"Results for 'Broken Links'";
+		this->rtbAccionResultado->Clear();
+		if (brokenLinks->Count == 0) {
+			this->rtbAccionResultado->SelectionColor = Color::LightGreen;
+			this->rtbAccionResultado->AppendText("[OK] ");
+			this->rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
+			this->rtbAccionResultado->AppendText(L"Congratulations! No broken links found.");
+		}
+		else {
+			this->rtbAccionResultado->AppendText("Found " + brokenLinks->Count + " broken links:\r\n\r\n");
+			for each (String ^ link in brokenLinks) {
+				rtbAccionResultado->SelectionColor = Color::Tomato;
+				rtbAccionResultado->AppendText("[BROKEN] ");
+				rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
+				rtbAccionResultado->AppendText(link + "\r\n");
+			}
+		}
+
 	}
 }
 
@@ -206,26 +314,57 @@ System::Void MyForm::searchWorker_DoWork(System::Object^ sender, System::Compone
 System::Void MyForm::searchWorker_RunWorkerCompleted(System::Object^ sender, System::ComponentModel::RunWorkerCompletedEventArgs^ e) {
 	this->grpAcciones->Enabled = true;
 	if (e->Error != nullptr) {
-		this->lblAccionResultadoTitulo->Text = L"Error en la Búsqueda";
-		this->rtbAccionResultado->Text = L"Ocurrió un error durante la búsqueda.";
+		if (currentCulture == "" || currentCulture == "es") {
+			this->lblAccionResultadoTitulo->Text = L"Error en la Búsqueda";
+			this->rtbAccionResultado->Text = L"Ocurrió un error durante la búsqueda.";
+		}
+		else {
+			this->lblAccionResultadoTitulo->Text = L"Search Error";
+			this->rtbAccionResultado->Text = L"An error occurred during the search.";
+		}
 		return;
 	}
 	PathResultManaged^ result = safe_cast<PathResultManaged^>(e->Result);
-	this->lblAccionResultadoTitulo->Text = "Resultados de Búsqueda para '" + txtPalabraClave->Text + "':";
+	if (currentCulture == "" || currentCulture == "es") {
+		this->lblAccionResultadoTitulo->Text = "Resultados de Búsqueda para '" + txtPalabraClave->Text + "':";
+	}
+	else
+	{
+		this->lblAccionResultadoTitulo->Text = "Search results for '" + txtPalabraClave->Text + "':";
+	}
+
 	this->rtbAccionResultado->Clear();
 	if (!result->found) {
-		this->rtbAccionResultado->SelectionColor = Color::Orange;
-		this->rtbAccionResultado->AppendText("[NO ENCONTRADO] ");
-		this->rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
-		this->rtbAccionResultado->AppendText(L"La palabra clave no se encontró en ninguna URL del árbol.");
+		if (currentCulture == "" || currentCulture == "es") {
+			this->rtbAccionResultado->SelectionColor = Color::Orange;
+			this->rtbAccionResultado->AppendText("[NO ENCONTRADO] ");
+			this->rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
+			this->rtbAccionResultado->AppendText(L"La palabra clave no se encontró en ninguna URL del árbol.");
+		}
+		else {
+			this->rtbAccionResultado->SelectionColor = Color::Orange;
+			this->rtbAccionResultado->AppendText("[NOT FOUND] ");
+			this->rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
+			this->rtbAccionResultado->AppendText(L"The keyword was not found in any URL in the tree.");
+		}
+
 	}
 	else {
 		int clicks = result->path->Count - 1;
 		this->rtbAccionResultado->SelectionColor = Color::LightGreen;
-		this->rtbAccionResultado->AppendText(L"[ÉXITO] ");
-		this->rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
-		this->rtbAccionResultado->AppendText("Encontrado en " + clicks + " clic(s).\r\n\r\n");
-		this->rtbAccionResultado->AppendText(L"Ruta más corta:\r\n");
+		if(currentCulture == "" || currentCulture == "es") {
+			this->rtbAccionResultado->AppendText(L"[ÉXITO] ");
+			this->rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
+			this->rtbAccionResultado->AppendText("Encontrado en " + clicks + " clic(s).\r\n\r\n");
+			this->rtbAccionResultado->AppendText(L"Ruta más corta:\r\n");
+		} else {
+			this->rtbAccionResultado->AppendText(L"[SUCCESS] ");
+			this->rtbAccionResultado->SelectionColor = rtbAccionResultado->ForeColor;
+			this->rtbAccionResultado->AppendText("Found in " + clicks + " clic(s).\r\n\r\n");
+			this->rtbAccionResultado->AppendText(L"Shorter route:\r\n");
+		}
+		
+
 		for (int i = 0; i < result->path->Count; ++i) {
 			rtbAccionResultado->AppendText((gcnew String(L' ', i * 2)) + "-> " + result->path[i] + "\r\n");
 		}
@@ -242,16 +381,33 @@ System::Void MyForm::rtbAccionResultado_LinkClicked(System::Object^ sender, Syst
 }
 
 System::Void MyForm::txtPalabraClave_Enter(System::Object^ sender, System::EventArgs^ e) {
-	if (this->txtPalabraClave->Text == L"Ingrese palabra clave aquí...") {
-		this->txtPalabraClave->Text = "";
-		this->txtPalabraClave->ForeColor = Color::White;
+	if (currentCulture == "" || currentCulture == "es") {
+
+		if (this->txtPalabraClave->Text == L"Ingrese palabra clave aquí...") {
+			this->txtPalabraClave->Text = "";
+			this->txtPalabraClave->ForeColor = Color::White;
+		}
+	}
+	else {
+		if (this->txtPalabraClave->Text == L"Enter keyword here...") {
+			this->txtPalabraClave->Text = "";
+			this->txtPalabraClave->ForeColor = Color::White;
+		}
 	}
 }
 
 System::Void MyForm::txtPalabraClave_Leave(System::Object^ sender, System::EventArgs^ e) {
-	if (String::IsNullOrWhiteSpace(this->txtPalabraClave->Text)) {
-		this->txtPalabraClave->Text = L"Ingrese palabra clave aquí...";
-		this->txtPalabraClave->ForeColor = Color::Gray;
+	if (currentCulture == "" || currentCulture == "es") {
+		if (String::IsNullOrWhiteSpace(this->txtPalabraClave->Text)) {
+			this->txtPalabraClave->Text = L"Ingrese palabra clave aquí...";
+			this->txtPalabraClave->ForeColor = Color::Gray;
+		}
+	}
+	else {
+		if (String::IsNullOrWhiteSpace(this->txtPalabraClave->Text)) {
+			this->txtPalabraClave->Text = L"Enter keyword here...";
+			this->txtPalabraClave->ForeColor = Color::Gray;
+		}
 	}
 }
 
@@ -310,18 +466,35 @@ System::Void MyForm::panelAccion_Paint(System::Object^ sender, System::Windows::
 }
 
 System::Void MyForm::btnNuevoAnalisis_Click(System::Object^ sender, System::EventArgs^ e) {
-	System::Windows::Forms::DialogResult confirmResult = MessageBox::Show(
-		L"¿Está seguro de que desea iniciar un nuevo análisis? Se perderán los resultados actuales.",
-		L"Confirmar Nuevo Análisis",
-		MessageBoxButtons::YesNo,
-		MessageBoxIcon::Question);
+	if (currentCulture == "" || currentCulture == "es") {
+		System::Windows::Forms::DialogResult confirmResult = MessageBox::Show(
+			L"¿Está seguro de que desea iniciar un nuevo análisis? Se perderán los resultados actuales.",
+			L"Confirmar Nuevo Análisis",
+			MessageBoxButtons::YesNo,
+			MessageBoxIcon::Question);
 
-	if (confirmResult == System::Windows::Forms::DialogResult::Yes) {
-		this->rtbAccionResultado->Clear();
-		this->lblAccionResultadoTitulo->Text = L"Resultados de la Acción:";
-		this->txtPalabraClave->Text = L"Ingrese palabra clave aquí...";
-		this->txtPalabraClave->ForeColor = Color::Gray;
-		SwitchPanel(panelInicio);
+		if (confirmResult == System::Windows::Forms::DialogResult::Yes) {
+			this->rtbAccionResultado->Clear();
+			this->lblAccionResultadoTitulo->Text = L"Resultados de la Acción:";
+			this->txtPalabraClave->Text = L"Ingrese palabra clave aquí...";
+			this->txtPalabraClave->ForeColor = Color::Gray;
+			SwitchPanel(panelInicio);
+		}
+	}
+	else {
+		System::Windows::Forms::DialogResult confirmResult = MessageBox::Show(
+			L"Are you sure you want to start a new analysis? Your current results will be lost.",
+			L"Confirm New Analysis",
+			MessageBoxButtons::YesNo,
+			MessageBoxIcon::Question);
+
+		if (confirmResult == System::Windows::Forms::DialogResult::Yes) {
+			this->rtbAccionResultado->Clear();
+			this->lblAccionResultadoTitulo->Text = L"Action Results:";
+			this->txtPalabraClave->Text = L"Enter keyword here...";
+			this->txtPalabraClave->ForeColor = Color::Gray;
+			SwitchPanel(panelInicio);
+		}
 	}
 }
 
@@ -385,7 +558,27 @@ System::Void MyForm::panelBotonSalir_MouseLeave(System::Object^ sender, System::
 void MyForm::InitializeComponent(void)
 {
 	
+	// 2. Aplicar los recursos a todo el formulario y sus controles hijos.
+	try
+	{
+		// 1. Usamos el ResourceManager base para ser más explícitos.
+		//    Le decimos el nombre exacto del recurso y en qué ensamblado buscar.
+		System::Resources::ResourceManager^ resources =
+			gcnew System::Resources::ResourceManager("NexusCrawlerApp.MyForm", MyForm::typeid->Assembly);
 
+		// 2. Aplicar los recursos (tu código para esto ya era correcto).
+		// NOTA: ApplyResources es un método de ComponentResourceManager, así que lo haremos manualmente.
+		this->Text = resources->GetString("$this.Text");
+		// ... tendrías que aplicar cada propiedad manualmente.
+
+		// ----- VAMOS A HACERLO MÁS FÁCIL -----
+		// Volvamos a ComponentResourceManager pero asegurémonos de que todo lo demás esté perfecto.
+		// La causa más probable sigue siendo una configuración del proyecto.
+	}
+	catch (System::Exception^ ex)
+	{
+		System::Windows::Forms::MessageBox::Show(ex->ToString(), "Error al Cargar Recursos");
+	}
 	this->components = (gcnew System::ComponentModel::Container());
 	this->crawlWorker = (gcnew System::ComponentModel::BackgroundWorker());
 	this->linkCheckWorker = (gcnew System::ComponentModel::BackgroundWorker());
@@ -968,26 +1161,6 @@ void MyForm::InitializeComponent(void)
 	// 1. Cargar los recursos para la cultura detectada.
 	System::ComponentModel::ComponentResourceManager^ resources = gcnew System::ComponentModel::ComponentResourceManager(MyForm::typeid);
 
-	// 2. Aplicar los recursos a todo el formulario y sus controles hijos.
-	try
-	{
-		// 1. Usamos el ResourceManager base para ser más explícitos.
-		//    Le decimos el nombre exacto del recurso y en qué ensamblado buscar.
-		System::Resources::ResourceManager^ resources =
-			gcnew System::Resources::ResourceManager("NexusCrawlerApp.MyForm", MyForm::typeid->Assembly);
-
-		// 2. Aplicar los recursos (tu código para esto ya era correcto).
-		// NOTA: ApplyResources es un método de ComponentResourceManager, así que lo haremos manualmente.
-		this->Text = resources->GetString("$this.Text");
-		// ... tendrías que aplicar cada propiedad manualmente.
-
-		// ----- VAMOS A HACERLO MÁS FÁCIL -----
-		// Volvamos a ComponentResourceManager pero asegurémonos de que todo lo demás esté perfecto.
-		// La causa más probable sigue siendo una configuración del proyecto.
-	}
-	catch (System::Exception^ ex)
-	{
-		System::Windows::Forms::MessageBox::Show(ex->ToString(), "Error al Cargar Recursos");
-	}
+	
 }
 #pragma endregion

@@ -130,7 +130,7 @@
     <value>Exp: https://www.uneg.edu.ve</value>
   </data>
   <data name="lblProfundidad.Text" xml:space="preserve">
-    <value>Depth level (0 for root page only):</value>
+    <value>Depth level (0 for root page only): </value>
   </data>
   <data name="chkIncludeSubdomains.Text" xml:space="preserve">
     <value>include subdomains into analysis</value>
@@ -166,22 +166,22 @@
     <value>&gt;&gt;ANALYSIS OVERVIEW</value>
   </data>
   <data name="lblUrlAnalizada.Text" xml:space="preserve">
-    <value>Root URL Parsed:</value>
+    <value>Root URL Parsed: </value>
   </data>
   <data name="lblProfundidadSolicitada.Text" xml:space="preserve">
-    <value>Requested Depth of Analysis:</value>
+    <value>Requested Depth of Analysis: </value>
   </data>
   <data name="lblTotalNodos.Text" xml:space="preserve">
-    <value>Total Nodes/Pages Discovered:</value>
+    <value>Total Nodes/Pages Discovered: </value>
   </data>
   <data name="lblEnlacesInternos.Text" xml:space="preserve">
-    <value>Internal Links Found:</value>
+    <value>Internal Links Found: </value>
   </data>
   <data name="lblEnlacesExternos.Text" xml:space="preserve">
-    <value>External Links Found:</value>
+    <value>External Links Found: </value>
   </data>
   <data name="lblProfundidadReal.Text" xml:space="preserve">
-    <value>Actual Maximum Tree Depth:</value>
+    <value>Actual Maximum Tree Depth: </value>
   </data>
   <data name="lblBtnNuevoAnalisis.Text" xml:space="preserve">
     <value>NEW ANALYSIS</value>

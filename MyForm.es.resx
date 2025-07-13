@@ -130,7 +130,7 @@
     <value>Ej: https://www.uneg.edu.ve</value>
   </data>
   <data name="lblProfundidad.Text" xml:space="preserve">
-    <value>Nivel de profundidad (0 para solo la página raíz):</value>
+    <value>Nivel de profundidad (0 para solo la página raíz): </value>
   </data>
   <data name="chkIncludeSubdomains.Text" xml:space="preserve">
     <value>Incluir subdominios en el análisis</value>
@@ -166,22 +166,22 @@
     <value>&gt;&gt; RESUMEN DEL ANÁLISIS</value>
   </data>
   <data name="lblUrlAnalizada.Text" xml:space="preserve">
-    <value>URL Raíz Analizada:</value>
+    <value>URL Raíz Analizada: </value>
   </data>
   <data name="lblProfundidadSolicitada.Text" xml:space="preserve">
-    <value>Profundidad de Análisis Solicitada:</value>
+    <value>Profundidad de Análisis Solicitada:  </value>
   </data>
   <data name="lblTotalNodos.Text" xml:space="preserve">
-    <value>Total de Nodos/Páginas Descubiertas:</value>
+    <value>Total de Nodos/Páginas Descubiertas: </value>
   </data>
   <data name="lblEnlacesInternos.Text" xml:space="preserve">
-    <value>Enlaces Internos Encontrados:</value>
+    <value>Enlaces Internos Encontrados: </value>
   </data>
   <data name="lblEnlacesExternos.Text" xml:space="preserve">
-    <value>Enlaces Externos Encontrados:</value>
+    <value>Enlaces Externos Encontrados: </value>
   </data>
   <data name="lblProfundidadReal.Text" xml:space="preserve">
-    <value>Profundidad Máxima Real del Árbol:</value>
+    <value>Profundidad Máxima Real del Árbol: </value>
   </data>
   <data name="lblBtnNuevoAnalisis.Text" xml:space="preserve">
     <value>NUEVO ANÁLISIS</value>
