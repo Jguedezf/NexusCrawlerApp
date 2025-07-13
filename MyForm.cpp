@@ -1191,7 +1191,7 @@ void MyForm::InitializeComponent(void)
 	// 
 	// MyForm
 	// 
-	this->Icon = gcnew System::Drawing::Icon(Application::StartupPath + L"\\icono\\grafoicono.ico");
+	this->Icon = gcnew System::Drawing::Icon(Application::StartupPath + L"\\icono\\iconoarbol.ico");
 	this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::None;
 	this->BackColor = System::Drawing::Color::FromArgb(static_cast<System::Int32>(static_cast<System::Byte>(28)), static_cast<System::Int32>(static_cast<System::Byte>(27)), static_cast<System::Int32>(static_cast<System::Byte>(45)));
 	this->ClientSize = System::Drawing::Size(900, 700);
